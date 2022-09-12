@@ -3,11 +3,11 @@
 # S-N       : 300025114
 
 #################################################################################################
-# Polynomial regression model on an x-y pair dataset of real valued random variables			#
-# X takes value in (0, 1) and Y depends on X according to Y = cos(2πX) + Z						#
-# Z is a zero mean Gaussian random variable with variance σ^2 , and Z is independent of X		#
-# Assuming the dependency between X and Y is unknow, and only a batch of N pairs is known		#
-# Learn a polynomial regression model and examine the fitting and generalization capabilities	#
+# Polynomial regression model on an x-y pair dataset of real valued random variables            #
+# X takes value in (0, 1) and Y depends on X according to Y = cos(2πX) + Z                      #
+# Z is a zero mean Gaussian random variable with variance σ^2 , and Z is independent of X       #
+# Assuming the dependency between X and Y is unknow, and only a batch of N pairs is known       #
+# Learn a polynomial regression model and examine the fitting and generalization capabilities   #
 #################################################################################################
 
 # Imports
@@ -25,9 +25,9 @@ def getData(size:int, sigma:float) -> List[Tuple[float]] :
 	for _ in range(size) :
 	
 		# Generate instance 
-		xi = random.uniform(0, 1) 				# Uniform distribution 
-		zi = random.gauss(0, sigma) 			# Gauss distribution with mean=0 and var=sigma
-		yi = math.cos(2 * math.pi * xi) + zi 	# Values generated according to Y = cos(2πX) + Z
+		xi = random.uniform(0, 1) # Uniform distribution 
+		zi = random.gauss(0, sigma) # Gauss distribution with mean=0 and var=sigma
+		yi = math.cos(2 * math.pi * xi) + zi # Values generated according to Y = cos(2πX) + Z
 		
 		# Add real x-y pair to dataset
 		data.append((xi, yi))
@@ -40,11 +40,11 @@ def getMSE(dataset:List[Tuple[float]], coefficients:List[float]) -> float :
 	
 	# MSE for a give dataset and coefficients
 	mse = 0
-	for (x, y) in dataset: 						# Computing the MSE on all the data in dataset
+	for (x, y) in dataset: # Computing the MSE on all the data in dataset
 		
 		# Compute predicted value for instance of x-y pair
 		predicted = 0
-		for i in range(len(coefficients)): 		# The lengthe of the coefficients is the degree of the polynomial
+		for i in range(len(coefficients)): # The lengthe of the coefficients is the degree of the polynomial
 		
 			# Adding coefficient-input pair to predicted output value 
 			predicted += coefficients[i] * math.pow(x, i)
@@ -66,7 +66,8 @@ def fitData(
 	coefficients=None,
 	batch_size=1,
 	epochs=50,
-	lr=0.1 
+	lr=0.1,
+	plot=False
 	) -> Tuple[List[float], float, float] :
 	
 	# Generate random coefficients if none are provided
@@ -74,17 +75,17 @@ def fitData(
 		coefficients = [random.random() for _ in range(degree)]
 	
 	# Determine type of gradient decent from batch size
-	if batch_size == 1: 						# Use SGD
+	if batch_size == 1: # Use SGD
 	
 		# Sample single random x-y pair from dataset
 		samp_dataset = random.sample(dataset, 1)
 		
-	elif batch_size == len(dataset): 			# Use GD
+	elif batch_size == len(dataset): # Use GD
 	
 		# Sample full dataset
 		samp_dataset = dataset
 		
-	else: 										# Use Mini-Batched SGD
+	else: # Use Mini-Batched SGD
 	
 		# Sample random x-y pairs from dataset
 		samp_dataset = random.sample(dataset, batch_size)
@@ -93,11 +94,11 @@ def fitData(
 	for _ in range(epochs):
 	
 		new_coefficients = []
-		for c_i in range(len(coefficients)):	# Find partial derivative for each coefficient
+		for c_i in range(len(coefficients)): # Find partial derivative for each coefficient
 			
 			# Calculate gradient
 			gradient = 0
-			for (x, y) in samp_dataset:			# Calculate gradient for each x-y pair in sample dataset
+			for (x, y) in samp_dataset: # Calculate gradient for each x-y pair in sample dataset
 				summation = 0
 				
 				for i in range(len(coefficients)): 
@@ -208,9 +209,9 @@ def run() -> None :
 	plt.show()
 
 
-# TODO: (F)	  ###################################
-			  #### SEE ACCOMPANYING DOCUMENT ####
-			  ###################################
+# TODO: (F)   ###################################
+              #### SEE ACCOMPANYING DOCUMENT ####
+              ###################################
 
 def main() -> None :
 	sigma = .01
