@@ -143,12 +143,9 @@ def fitData(
 			ax.set(ylim=(-1, 1))
 			plt.scatter(list(map(lambda data: data[0], dataset)), list(map(lambda data: data[1], dataset)))
 			
-			
-			
-			
 			xs = np.linspace(0,1,num=100)
 			fx = []
-			s=''
+			s = ''
 			for x_ in xs: # Computing the MSE on all the data in dataset
 				s = ''
 				# Compute predicted value for instance of x-y pair
@@ -162,10 +159,6 @@ def fitData(
 			print(s[:-2])
 			plt.plot(xs, fx)
 			print()
-			
-			
-			
-			
 			
 			predicted_data =[]
 			for (x, y) in dataset: # Computing the MSE on all the data in dataset
@@ -374,8 +367,8 @@ def main() -> None :
 	#print(E_in_av, E_out_av, E_bias)
 	
 	run()
-	print()
-	run(regularize=True)
+	#print()
+	#run(regularize=True)
 	
 
 if __name__ == "__main__":
