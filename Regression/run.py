@@ -73,12 +73,13 @@ def fitData(
 	coefficients=None,
 	batch_size=1,
 	epochs=50,
-	lr=0.1,
+	lr=0.01,
 	regularization_rate=0,
 	plot_data=False
 	) -> Tuple[List[float], float, float] :
 	
 	# Generate random coefficients if none are provided
+	degree += 1
 	if coefficients == None :
 		coefficients = [random.random() for _ in range(degree)]
 	
@@ -112,7 +113,7 @@ def fitData(
 			for (x, y) in samp_dataset: # Calculate gradient for each x-y pair in sample dataset
 				summation = 0
 				
-				for i in range(len(coefficients)): 
+				for i in range(len(coefficients)): # Sum predicted value
 					summation += coefficients[i] * math.pow(x, i)
 					
 				# Gradient value used for updating coefficient
@@ -121,7 +122,7 @@ def fitData(
 			# Calculate new coefficient from gradient
 			# If regularization rate = 0, no regularization is used
 			regularization = regularization_rate * coefficients[c_i] 
-			new_coefficients.append(coefficients[c_i] - lr * ((-2/batch_size * gradient) - regularization))
+			new_coefficients.append(coefficients[c_i] - lr * (((-2 / batch_size) * gradient) + regularization))
 		
 		# Update coefficients
 		coefficients = new_coefficients
@@ -132,15 +133,40 @@ def fitData(
 		E_in_plot.append(E_in)
 		
 		# Generate new data and calculate error 
-		new_data = getData(2000, sigma)
+		new_data = getData(1000, sigma)
 		E_out= getMSE(new_data, coefficients)
 		E_out_plot.append(E_out)
 		
 		# For plotting and documentation
-		if plot_data and math.fmod(epoch, 200) == 0.0:
+		if plot_data and math.fmod(epoch, epochs//10) == 0.0:
 			fig, ax = plt.subplots()
 			ax.set(ylim=(-1, 1))
 			plt.scatter(list(map(lambda data: data[0], dataset)), list(map(lambda data: data[1], dataset)))
+			
+			
+			
+			
+			xs = np.linspace(0,1,num=100)
+			fx = []
+			s=''
+			for x_ in xs: # Computing the MSE on all the data in dataset
+				s = ''
+				# Compute predicted value for instance of x-y pair
+				predicted = 0
+				for i in range(len(coefficients)): # The lengthe of the coefficients is the degree of the polynomial
+				
+					# Adding coefficient-input pair to predicted output value 
+					predicted += coefficients[i] * math.pow(x_, i)
+					s += '(' + str(format(coefficients[i], '.3f')) + ')' + str(format(x,'.3f')) + '^' + str(i) + ' + '
+				fx.append(predicted)
+			print(s[:-2])
+			plt.plot(xs, fx)
+			print()
+			
+			
+			
+			
+			
 			predicted_data =[]
 			for (x, y) in dataset: # Computing the MSE on all the data in dataset
 				# Compute predicted value for instance of x-y pair
@@ -170,7 +196,7 @@ def fitData(
 	E_in = getMSE(dataset, coefficients)
 	
 	# Generate new data and calculate error 
-	new_data = getData(2000, sigma)
+	new_data = getData(1000, sigma)
 	E_out = getMSE(new_data, coefficients)
 	
 	return (coefficients, E_in, E_out)
@@ -181,7 +207,7 @@ def experiment(
 	size:int, 
 	degree:int, 
 	sigma:float, 
-	M=50, 
+	M=20, 
 	algorithm='GD', 
 	batch_size=1, 
 	epochs=50,
@@ -225,7 +251,7 @@ def experiment(
 	new_coefficients = [sum(i)/len(polynomials) for i in zip(*polynomials)]
 	
 	# Generate new dataset 
-	new_data = getData(2000, sigma)
+	new_data = getData(1000, sigma)
 	
 	# Error of average coefficients on new dataset
 	E_bias = getMSE(new_data, new_coefficients)
@@ -234,7 +260,7 @@ def experiment(
 
 
 # TODO: (E) Run experiment on different combinations of dataset size, polynomial degree, and variance
-def run(include_gen=True, epochs=2, regularize=False) -> None :
+def run(include_gen=True, epochs=20, regularize=False) -> None :
 
 	# Test different sizes, polynomial degrees, and variance
 	N = [2, 5, 10, 20, 50, 100, 200]
@@ -245,15 +271,18 @@ def run(include_gen=True, epochs=2, regularize=False) -> None :
 	reg_rate=0
 	reg = ''
 	if regularize :
-		reg_rate = 0.001
+		reg_rate = 0.01
 		reg = '_regularized'
 	
 	anchor_x = .8
 	if include_gen :
 		anchor_x = .9
 
-	print("SIZE IMPACT")
 	for sig in sigmas:
+		d_const_E_in_plot = [[] for _ in range(len(N))]
+		d_const_E_out_plot = [[] for _ in range(len(N))]
+		d_const_E_bias_plot = [[] for _ in range(len(N))]
+		d_const_E_gen_plot = [[] for _ in range(len(N))]
 		for d in ds:
 			E_in_plot = []
 			E_out_plot = []
@@ -261,14 +290,23 @@ def run(include_gen=True, epochs=2, regularize=False) -> None :
 			E_gen_plot = []
 			
 			fig, ax = plt.subplots()
-			ax.set(ylim=(0, 2))
-			#fig = plt.figure(figsize=(10,5))
+			ax.set(ylim=(0, 2.5))
+
+			it = 0
 			for n in tqdm(N):
+				
 				E_in_av, E_out_av, E_bias, E_gen = experiment(n, d, sig, epochs=epochs, regularization_rate=reg_rate)
+				
+				d_const_E_in_plot[it].append(E_in_av)
+				d_const_E_out_plot[it].append(E_out_av)
+				d_const_E_bias_plot[it].append(E_bias)
+				d_const_E_gen_plot[it].append(E_gen)
+				
 				E_in_plot.append(E_in_av)
 				E_out_plot.append(E_out_av)
 				E_bias_plot.append(E_bias)
 				E_gen_plot.append(E_gen)
+				it += 1
 			
 			plt.plot(N, E_in_plot, label ='E_in')
 			plt.plot(N, E_out_plot, label ='E_out')
@@ -283,107 +321,61 @@ def run(include_gen=True, epochs=2, regularize=False) -> None :
 			plt.title('degree: ' + str(d) + ", sigma: " + str(sig))
 			fig.savefig('N' + reg + '/'+'degree: ' + str(d) + ", sigma: " + str(sig) + ".jpg", bbox_inches='tight', dpi=150)
 			plt.close()
-		#plt.show()
 		
-	print("VARIANCE IMPACT")
-	for n in N:
-		for d in tqdm(ds):
-			E_in_plot = []
-			E_out_plot = []
-			E_bias_plot = []
-			E_gen_plot = []
-			
+		for it in range(len(N)):
 			fig, ax = plt.subplots()
-			ax.set(ylim=(0, 2))
-			for sig in sigmas:
-				E_in_av, E_out_av, E_bias, E_gen = experiment(n, d, sig, epochs=epochs, regularization_rate=reg_rate)
-				E_in_plot.append(E_in_av)
-				E_out_plot.append(E_out_av)
-				E_bias_plot.append(E_bias)
-				E_gen_plot.append(E_gen)
-			
-			plt.plot(sigmas, E_in_plot, label ='E_in')
-			plt.plot(sigmas, E_out_plot, label ='E_out')
-			plt.plot(sigmas, E_bias_plot, label ='E_bias')
+			ax.set(ylim=(0, 2.5))
+			plt.plot(ds, d_const_E_in_plot[it], label ='E_in')
+			plt.plot(ds, d_const_E_out_plot[it], label ='E_out')
+			plt.plot(ds, d_const_E_bias_plot[it], label ='E_bias')
 			if include_gen :
-				plt.plot(sigmas, E_gen_plot, label ='E_gen')
+				plt.plot(ds, d_const_E_gen_plot[it], label ='E_gen')
 			plt.legend(bbox_to_anchor =(anchor_x, 1.15), ncol = 4)
-			
-			plt.xlabel("Variance")
-			plt.ylabel("MSE")
-			
-			plt.title('degree: ' + str(d) + ", size: " + str(n))
-			fig.savefig('Sigma' + reg + '/'+'degree: ' + str(d) + ", size: " + str(n) + ".jpg", bbox_inches='tight', dpi=150)
-			plt.close()
-		#plt.show()
-		
-	print("DEGREE IMPACT")
-	for sig in sigmas:
-		for n in tqdm(N):
-			E_in_plot = []
-			E_out_plot = []
-			E_bias_plot = []
-			E_gen_plot = []
-			
-			fig, ax = plt.subplots()
-			ax.set(ylim=(0, 2))
-			for d in ds:
-				E_in_av, E_out_av, E_bias, E_gen = experiment(n, d, sig, epochs=epochs, regularization_rate=reg_rate)
-				E_in_plot.append(E_in_av)
-				E_out_plot.append(E_out_av)
-				E_bias_plot.append(E_bias)
-				E_gen_plot.append(E_gen)
-			
-			plt.plot(ds, E_in_plot, label ='E_in')
-			plt.plot(ds, E_out_plot, label ='E_out')
-			plt.plot(ds, E_bias_plot, label ='E_bias')
-			if include_gen :
-				plt.plot(ds, E_gen_plot, label ='E_gen')
-			plt.legend(bbox_to_anchor =(anchor_x, 1.15), ncol = 4)
-		
 			plt.xlabel("Degree")
 			plt.ylabel("MSE")
-						
-			plt.title('size: ' + str(n) + ", sigma: " + str(sig))
-			fig.savefig('Degree' + reg + '/'+'size: ' + str(n) + ", sigma: " + str(sig) + ".jpg", bbox_inches='tight', dpi=150)
+			plt.title('size: ' + str(N[it]) + ", sigma: " + str(sig))
+			fig.savefig('Degree' + reg + '/'+'size: ' + str(N[it]) + ", sigma: " + str(sig) + ".jpg", bbox_inches='tight', dpi=150)
 			plt.close()
-		#plt.show()
-		
-		
-	
-	
+
 
 # TODO: (F)   ###################################
               #### SEE ACCOMPANYING DOCUMENT ####
               ###################################
 
 def main() -> None :
-	sigma = .1
-	data = getData(200, sigma)
+	sigma = .01
+	data = getData(2, sigma)
 	# mse = getMSE(data, [3.,2.,0.,2.,5.,4.])
 	batch_size = len(data)
 	degree = 5
 	#(c, ei, eo) = fitData(data, degree, sigma, epochs=1, batch_size=batch_size)
 	#print(ei, eo)
 	
-	(c, ei, eo) = fitData(data, degree+15, sigma, epochs=1000, batch_size=batch_size, plot_data=True)
-	print(ei, eo)
-	print()
-	(c, ei, eo) = fitData(data, degree, sigma, epochs=1000, batch_size=batch_size, plot_data=True)
-	print(ei, eo)
-	print()
-	(c, ei, eo) = fitData(data, degree, sigma, epochs=1000, batch_size=batch_size, plot_data=True, regularization_rate=.001)
-	print(ei, eo)
+	#(c, ei, eo) = fitData(data, degree, sigma, epochs=1000, batch_size=batch_size, plot_data=True)
+	#print(ei, eo)
+	#print()
+	#(c, ei, eo) = fitData(data, degree+15, sigma, epochs=1000, batch_size=batch_size, plot_data=True)
+	#print(ei, eo)
+	#print()
+	#(c, ei, eo) = fitData(data, degree, sigma, epochs=1000, batch_size=batch_size, plot_data=True, regularization_rate=.001)
+	#print(ei, eo)
 	
 	#(c, ei, eo) = fitData(data, degree, sigma, coefficients=c, epochs=500, batch_size=batch_size)
 	#print(ei, eo)
 	
-	#E_in_av, E_out_av, E_bias, E_gen = experiment(200, degree, sigma, epochs=1000)
+	# Complexity needs more iterations
+	#E_in_av, E_out_av, E_bias, E_gen = experiment(2, degree, sigma, epochs=100)
+	#print(E_in_av, E_out_av, E_bias)
+	#E_in_av, E_out_av, E_bias, E_gen = experiment(200, degree+5, sigma, epochs=50)
+	#print(E_in_av, E_out_av, E_bias)
+	#E_in_av, E_out_av, E_bias, E_gen = experiment(200, degree+10, sigma, epochs=500)
+	#print(E_in_av, E_out_av, E_bias)
+	#E_in_av, E_out_av, E_bias, E_gen = experiment(200, degree+15, sigma, epochs=1000)
 	#print(E_in_av, E_out_av, E_bias)
 	
-	#run()
-	#print()
-	#run(regularize=True)
+	run()
+	print()
+	run(regularize=True)
 	
 
 if __name__ == "__main__":
