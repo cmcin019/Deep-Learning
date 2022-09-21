@@ -13,10 +13,12 @@
 # Imports
 import math
 import matplotlib.pyplot as plt
+import numpy as np
+import os
+from os import system
 import random
 from tqdm import tqdm
 from typing import List, Tuple
-import numpy as np
 
 # TODO: (A) Write a function getData that generates a dataset {(xi , yi ) : i = 1, 2, ... N } of N (X, Y) pairs for a given value of N and σ^2.
 def getData(
@@ -261,15 +263,15 @@ def experiment(
 # TODO: (E) Run experiment on different combinations of dataset size, polynomial degree, and variance
 def run(
 	include_gen=True, 
-	epochs=20, 
+	epochs=1000, 
 	adaptive_epochs=False, 
 	regularize=False
 	) -> None :
 
 	# Test different sizes, polynomial degrees, and variance
-	N = [2, 5, 10, 20, 50, 100, 200]
+	N = [5]
 	ds = [x for x in range(21)] 
-	sigmas = [0.01, 0.1, 1.]
+	sigmas = [0.01, 0.1]
 	
 	# Adaptive iteration 
 	ad_e = ''
@@ -308,6 +310,8 @@ def run(
 			fig, ax = plt.subplots()
 			ax.set(ylim=(0, 2.5))
 			it = 0
+			system('cls' if os.name == 'nt' else 'clear')
+			print("Computing error for degree: " + str(d) + "(of 20) and sigma: " + str(sig))
 			for n in tqdm(N): # Every batch size
 				
 				# Run experiment
@@ -375,7 +379,30 @@ def run(
               ###################################
 
 def main() -> None :
-	run()
+	try: 
+		os.mkdir("Degree")
+		os.mkdir("Degree_regularized") 
+		os.mkdir("e_Degree") 
+		os.mkdir("e_Degree_regularized") 
+		os.mkdir("e_N") 
+		os.mkdir("e_N_regularized") 
+		os.mkdir("N") 
+		os.mkdir("N_regularized")
+		print("Directories created")
+	except OSError as error: 
+		pass 
+	#run()
+	
+	sigma = .01
+	data = getData(5, sigma)
+	# mse = getMSE(data, [3.,2.,0.,2.,5.,4.])
+	batch_size = len(data)
+	degree = 20
+
+	
+	(c, ei, eo) = fitData(data, degree, sigma, epochs=1000, batch_size=batch_size, plot_data=True)
+	print(ei, eo)
+	#print()
 	
 
 if __name__ == "__main__":
