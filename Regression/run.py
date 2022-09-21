@@ -73,7 +73,7 @@ def fitData(
 	coefficients=None,
 	batch_size=1,
 	epochs=50,
-	lr=0.01,
+	lr=0.1,
 	regularization_rate=0,
 	plot_data=False
 	) -> Tuple[List[float], float, float] :
@@ -200,10 +200,11 @@ def experiment(
 	size:int, 
 	degree:int, 
 	sigma:float, 
-	M=20, 
+	M=50, 
 	algorithm='GD', 
 	batch_size=1, 
 	epochs=50,
+	adaptive_epochs=False,
 	regularization_rate=0
 	) -> Tuple[float, float, float] :
 	
@@ -226,6 +227,8 @@ def experiment(
 		
 		# Generate dataset and fit coefficients to data
 		dataset = getData(size, sigma)
+		if adaptive_epochs:
+			epochs = degree*5
 		coefficients, E_in, E_out = fitData(dataset, degree, sigma, epochs=epochs, batch_size=batch_size, regularization_rate=regularization_rate)
 		
 		# Sum of Errors
@@ -253,13 +256,22 @@ def experiment(
 
 
 # TODO: (E) Run experiment on different combinations of dataset size, polynomial degree, and variance
-def run(include_gen=True, epochs=20, regularize=False) -> None :
+def run(
+	include_gen=True, 
+	epochs=20, 
+	adaptive_epochs=False, 
+	regularize=False
+	) -> None :
 
 	# Test different sizes, polynomial degrees, and variance
 	N = [2, 5, 10, 20, 50, 100, 200]
 	#N = [2, 5, 10]
 	ds = [x for x in range(21)] 
 	sigmas = [0.01, 0.1, 1.]
+	
+	ad_e = ''
+	if adaptive_epochs:
+		ad_e = 'e_'
 	
 	reg_rate=0
 	reg = ''
@@ -288,7 +300,7 @@ def run(include_gen=True, epochs=20, regularize=False) -> None :
 			it = 0
 			for n in tqdm(N):
 				
-				E_in_av, E_out_av, E_bias, E_gen = experiment(n, d, sig, epochs=epochs, regularization_rate=reg_rate)
+				E_in_av, E_out_av, E_bias, E_gen = experiment(n, d, sig, epochs=epochs, adaptive_epochs=adaptive_epochs, regularization_rate=reg_rate)
 				
 				d_const_E_in_plot[it].append(E_in_av)
 				d_const_E_out_plot[it].append(E_out_av)
@@ -312,7 +324,7 @@ def run(include_gen=True, epochs=20, regularize=False) -> None :
 			plt.ylabel("MSE")
 			
 			plt.title('degree: ' + str(d) + ", sigma: " + str(sig))
-			fig.savefig('N' + reg + '/'+'degree: ' + str(d) + ", sigma: " + str(sig) + ".jpg", bbox_inches='tight', dpi=150)
+			fig.savefig(ad_e + 'N' + reg + '/'+'degree: ' + str(d) + ", sigma: " + str(sig) + ".jpg", bbox_inches='tight', dpi=150)
 			plt.close()
 		
 		for it in range(len(N)):
@@ -327,7 +339,7 @@ def run(include_gen=True, epochs=20, regularize=False) -> None :
 			plt.xlabel("Degree")
 			plt.ylabel("MSE")
 			plt.title('size: ' + str(N[it]) + ", sigma: " + str(sig))
-			fig.savefig('Degree' + reg + '/'+'size: ' + str(N[it]) + ", sigma: " + str(sig) + ".jpg", bbox_inches='tight', dpi=150)
+			fig.savefig(ad_e + 'Degree' + reg + '/'+'size: ' + str(N[it]) + ", sigma: " + str(sig) + ".jpg", bbox_inches='tight', dpi=150)
 			plt.close()
 
 
@@ -337,7 +349,7 @@ def run(include_gen=True, epochs=20, regularize=False) -> None :
 
 def main() -> None :
 	sigma = .01
-	data = getData(2, sigma)
+	data = getData(200, sigma)
 	# mse = getMSE(data, [3.,2.,0.,2.,5.,4.])
 	batch_size = len(data)
 	degree = 5
@@ -357,7 +369,7 @@ def main() -> None :
 	#print(ei, eo)
 	
 	# Complexity needs more iterations
-	#E_in_av, E_out_av, E_bias, E_gen = experiment(2, degree, sigma, epochs=100)
+	#E_in_av, E_out_av, E_bias, E_gen = experiment(200, degree, sigma, epochs=1000)
 	#print(E_in_av, E_out_av, E_bias)
 	#E_in_av, E_out_av, E_bias, E_gen = experiment(200, degree+5, sigma, epochs=50)
 	#print(E_in_av, E_out_av, E_bias)
@@ -366,9 +378,9 @@ def main() -> None :
 	#E_in_av, E_out_av, E_bias, E_gen = experiment(200, degree+15, sigma, epochs=1000)
 	#print(E_in_av, E_out_av, E_bias)
 	
-	run()
-	#print()
-	#run(regularize=True)
+	#run()
+	print()
+	run(adaptive_epochs=True, regularize=True)
 	
 
 if __name__ == "__main__":
