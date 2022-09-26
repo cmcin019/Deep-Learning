@@ -2,10 +2,9 @@
 # Email     : cmcin019@uottawa.ca
 # S-N       : 300025114
 
-
 # Imports
 import math
-import random
+from random import random
 
 # TODO: Question 01
 # x is a vector of dim K
@@ -21,12 +20,14 @@ def mat_vec(A, x) :
 		mat.append(result)
 	return mat
 
-
 def sigmoid(y):
 	sig = []
 	for i in range(len(y)):
 		sig.append(1 / (1 + math.exp( -y[i] )))
 	return sig
+
+def sigmoid_derivation(out):
+    return 1 / (1 + math.exp( -out )) * (1 - 1 / (1 + math.exp( -out )))
 
 def mat_add(u, v):
 	res = []
@@ -38,21 +39,102 @@ def eucld_dist(w):
 	dist = sum([math.pow(i, 2) for i in w])
 	return dist
 	
+def forward(x, A, B, C):
+    net = {}
+    net['x'] = x
+    net['y'] = mat_vec(A,x)
+    net['u'] = mat_vec(B, x)
+    net['v'] = sigmoid(net['y'])
+    net['z'] = mat_add(net['u'], net['v'])
+    net['w'] = mat_vec(C, net['z'])
+    return net
+
+def C_gradient(C, net):
+    gradients = []
+    for i in range(len(C)):
+        gradient = []
+        for j in range(len(C[i])):
+            gradient.append(2 * (net['w'][j]) * net['z'][i])
+        gradients.append(gradient)
+    return gradients
+
+def B_gradient(B, net, C_g):
+    gradients = []
+    for i in range(len(B)):
+        gradient = []
+        for j in range(len(B[i])):
+            gradient.append(net['x'][i] * sum(C_g[j]))
+        gradients.append(gradient)
+    return gradients
+
+def A_gradient(A, net, C_g):
+    gradients = []
+    for i in range(len(A)):
+        gradient = []
+        for j in range(len(A[i])):
+            gradient.append(net['x'][i] * sigmoid_derivation(net['y'][i]) * math.prod(C_g[j]))
+        gradients.append(gradient)
+    return gradients
+
+def backward(x, A, B, C):
+    pass    
 	
+import torch
+def test(x, A, B, C):
+    t_x = torch.tensor(x, requires_grad=False)
+    t_A = torch.tensor(A, requires_grad=True)
+    t_B = torch.tensor(B, requires_grad=True)
+    t_C = torch.tensor(C, requires_grad=True)
+
+    net_forward = torch.matmul((torch.sigmoid(torch.matmul(t_x, t_A)) + torch.matmul(t_x, t_B)), t_C)
+
+    # external_grad = torch.tensor([1., 1.])
+    # net_forward.backward()
+
+    # loss = torch.nn.functional.mse_loss(net_forward, t_x)
+    loss = torch.sum(torch.pow(net_forward, 2))
+    loss.backward()
+    print(f"{t_C.grad}")
+    print()
+    print(f"{t_B.grad}")
+    print()
+    print(f"{t_A.grad}")
+    print()
+    print()
+
 def run():
-	# √x2+z2+y2+w2
-	# x√x2+z2+y2+w2
+
+    K = 3
+    A = [[random() for _ in range(K)] for _ in range(K)]
+    B = [[random() for _ in range(K)] for _ in range(K)]
+    C = [[random() for _ in range(K)] for _ in range(K)]
+
+    x = [random() for _ in range(K)]
+
+    f = forward(x, A, B, C)
+
+    C_g = C_gradient(C, f)
+    B_g = B_gradient(B,f,C_g)
+    A_g = A_gradient(A,f,C_g)
+
+    test(x, A, B, C)
+
+
+    # print(f)
+    # print()
+    # print(C_g)
+    print()
+    print(torch.tensor(C_g))
+    print()
+    print(torch.tensor(B_g))
+    print()
+    print(torch.tensor(A_g))
 
 def main() -> None :
-	pass
+	run()
 	
 
 if __name__ == "__main__":
 	main()
 	print("End")
-
-
-
-
-
 
