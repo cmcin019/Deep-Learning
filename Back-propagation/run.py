@@ -7,8 +7,6 @@ import math
 from random import random
 
 # TODO: Question 01
-# x is a vector of dim K
-# A, B, C are square mats of dim K x K
 
 def mat_vec(A, x):
 	K = len(x)
@@ -19,19 +17,6 @@ def mat_vec(A, x):
 			result += A[j][i] * x[j]
 		mat.append(result)
 	return mat
-
-def mat_mat(A, B):
-	K = len(A)
-	m = []
-	for i in range(K):
-		c = []
-		for j in range(K):
-			r = 0
-			for k in range(K):
-				r += (A[i][k] * B[k][j])
-			c.append(r)
-		m.append(c)
-	return m
 
 def sigmoid(y):
 	sig = []
@@ -65,6 +50,16 @@ def forward(x, A, B, C):
 	net['w'] = mat_vec(C, net['z'])
 	return net
 
+def a_L_minus_1(net):
+	C = net['C']
+	gradients = []
+	for i in range(len(C)):
+		gradient = []
+		for j in range(len(C[i])):
+			gradient.append(2 * net['w'][j] * net['C'][i][j])
+		gradients.append(gradient)
+	return gradients
+
 def C_gradient(net):
 	C = net['C']
 	gradients = []
@@ -72,17 +67,6 @@ def C_gradient(net):
 		gradient = []
 		for j in range(len(C[i])):
 			gradient.append(2 * net['w'][j] * net['z'][i])
-		gradients.append(gradient)
-	return gradients
-
-def a_L_minus_1(net):
-	C = net['C']
-	gradients = []
-	for i in range(len(C)):
-		gradient = []
-		for j in range(len(C[i])):
-			# gradient.append(2 * mat_vec(C, net['z'])[j] * net['C'][i][j])
-			gradient.append(2 * net['w'][j] * net['C'][i][j])
 		gradients.append(gradient)
 	return gradients
 
@@ -134,58 +118,52 @@ def test(x, A, B, C):
 	net_forward = torch.matmul((torch.sigmoid(torch.matmul(t_x, t_A)) + torch.matmul(t_x, t_B)), t_C)
 
 	loss = torch.sum(torch.pow(net_forward, 2))
+	print("TORCH:")
 	print("Torch loss", loss)
 	loss.backward()
-	print("REAL:")
-	print(f"{t_C.grad}")
-	print()
-	print(f"{t_B.grad}")
-	print()
-	print(f"{t_A.grad}")
-	print()
+	print(f"{t_C.grad}\n")
+	print(f"{t_B.grad}\n")
+	print(f"{t_A.grad}\n\n")
 	f = forward(x, A, B, C)
 	A_g, B_g, C_g = backward(f)
-	print()
 	loss = forward_loss(f['w'])
-	print("My loss", loss)
 	print("MINE:")
-	print(torch.tensor(C_g))
-	print()
-	print(torch.tensor(B_g))
-	print()
-	print(torch.tensor(A_g))
+	print("My loss", loss)
+	print(torch.tensor(C_g),'\n')
+	print(torch.tensor(B_g),'\n')
+	print(torch.tensor(A_g),'\n')
 
+def run(K=3, N=1000, lr=0.01, perform_test=True):
 
-def run():
-
-	K = 5
 	A = [[random() for _ in range(K)] for _ in range(K)]
 	B = [[random() for _ in range(K)] for _ in range(K)]
 	C = [[random() for _ in range(K)] for _ in range(K)]
 
 	x = [random() for _ in range(K)]
 
-	f = forward(x, A, B, C)
+	net = forward(x, A, B, C)
 	# A_g, B_g, C_g = backward(f)
-
-	loss = forward_loss(f['w'])
-	print("Loss Before GD:")
-	print(loss)
-	f = gradient_descent(0.05, 1000, f)
-	loss = forward_loss(f['w'])
-	print("Loss After GD:")
-	print(loss)
 	
 	# TEST #
-	###############
-	# test(x, A, B, C)
-	##############
+	if perform_test:
+		test(x, A, B, C)
 
-
+	loss = forward_loss(net['w'])
+	print("Loss Before GD:")
+	print(loss)
+	print(net['A'])
+	print(net['B'])
+	print(net['C'],'\n')
+	net = gradient_descent(lr, N, net)
+	loss = forward_loss(net['w'])
+	print("Loss After GD:")
+	print(loss)
+	print(net['A'])
+	print(net['B'])
+	print(net['C'])
 
 def main() -> None :
 	run()
-	
 
 if __name__ == "__main__":
 	main()
