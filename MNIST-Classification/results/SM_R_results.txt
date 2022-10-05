@@ -1,0 +1,29 @@
+SoftMax_Regression - dropout=False bn=False
+Epoch 1: 	52.94
+Epoch 3: 	77.9
+Epoch 5: 	80.57
+Epoch 7: 	81.45
+Epoch 9: 	82.1
+
+SoftMax_Regression - dropout=True bn=False
+Epoch 1: 	67.86
+Epoch 3: 	72.65
+Epoch 5: 	80.45
+Epoch 7: 	81.37
+Epoch 9: 	81.84
+
+SoftMax_Regression - dropout=False bn=True
+Epoch 1: 	85.63
+Epoch 3: 	89.43
+Epoch 5: 	90.06
+Epoch 7: 	90.56
+Epoch 9: 	90.98
+
+SoftMax_Regression - dropout=True bn=True
+Epoch 1: 	83.86
+Epoch 3: 	88.68
+Epoch 5: 	89.66
+Epoch 7: 	90.15
+Epoch 9: 	90.43
+
+End

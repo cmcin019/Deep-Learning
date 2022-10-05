@@ -1,0 +1,195 @@
+MLP - width=28 depth=2 dropout=False bn=False
+Epoch 1: 	18.46
+Epoch 3: 	41.89
+Epoch 5: 	23.88
+Epoch 7: 	39.22
+Epoch 9: 	78.19
+
+MLP - width=28 depth=1 dropout=False bn=False
+Epoch 1: 	24.67
+Epoch 3: 	28.99
+Epoch 5: 	64.31
+Epoch 7: 	80.89
+Epoch 9: 	82.88
+
+MLP - width=28 depth=3 dropout=False bn=False
+Epoch 1: 	10.32
+Epoch 3: 	25.38
+Epoch 5: 	27.37
+Epoch 7: 	27.67
+Epoch 9: 	26.81
+
+MLP - width=56 depth=1 dropout=False bn=False
+Epoch 1: 	13.29
+Epoch 3: 	65.31
+Epoch 5: 	81.65
+Epoch 7: 	83.42
+Epoch 9: 	83.96
+
+MLP - width=56 depth=3 dropout=False bn=False
+Epoch 1: 	34.82
+Epoch 3: 	30.07
+Epoch 5: 	18.29
+Epoch 7: 	32.76
+Epoch 9: 	69.33
+
+MLP - width=112 depth=2 dropout=False bn=False
+Epoch 1: 	11.93
+Epoch 3: 	66.07
+Epoch 5: 	82.93
+Epoch 7: 	84.15
+Epoch 9: 	84.88
+
+MLP - width=112 depth=1 dropout=False bn=False
+Epoch 1: 	54.42
+Epoch 3: 	82.5
+Epoch 5: 	84.04
+Epoch 7: 	84.62
+Epoch 9: 	85.12
+
+MLP - width=28 depth=1 dropout=True bn=False
+Epoch 1: 	28.34
+Epoch 3: 	33.81
+Epoch 5: 	62.67
+Epoch 7: 	80.08
+Epoch 9: 	82.67
+
+MLP - width=56 depth=1 dropout=True bn=False
+Epoch 1: 	12.2
+Epoch 3: 	65.27
+Epoch 5: 	81.96
+Epoch 7: 	83.53
+Epoch 9: 	84.03
+
+MLP - width=56 depth=3 dropout=True bn=False
+Epoch 1: 	33.53
+Epoch 3: 	39.32
+Epoch 5: 	27.79
+Epoch 7: 	27.37
+Epoch 9: 	66.22
+
+MLP - width=28 depth=3 dropout=True bn=False
+Epoch 1: 	11.91
+Epoch 3: 	11.35
+Epoch 5: 	11.35
+Epoch 7: 	13.52
+Epoch 9: 	22.39
+
+MLP - width=112 depth=2 dropout=True bn=False
+Epoch 1: 	9.8
+Epoch 3: 	66.61
+Epoch 5: 	82.93
+Epoch 7: 	84.16
+Epoch 9: 	84.89
+
+MLP - width=112 depth=1 dropout=True bn=False
+Epoch 1: 	51.18
+Epoch 3: 	82.28
+Epoch 5: 	84.1
+Epoch 7: 	84.57
+Epoch 9: 	84.95
+
+MLP - width=28 depth=1 dropout=False bn=True
+Epoch 1: 	93.63
+Epoch 3: 	95.93
+Epoch 5: 	96.83
+Epoch 7: 	97.24
+Epoch 9: 	97.53
+
+MLP - width=56 depth=1 dropout=False bn=True
+Epoch 1: 	95.19
+Epoch 3: 	97.01
+Epoch 5: 	97.63
+Epoch 7: 	97.75
+Epoch 9: 	97.97
+
+MLP - width=56 depth=3 dropout=False bn=True
+Epoch 1: 	95.32
+Epoch 3: 	97.0
+Epoch 5: 	97.62
+Epoch 7: 	98.06
+Epoch 9: 	98.1
+
+MLP - width=28 depth=3 dropout=False bn=True
+Epoch 1: 	93.91
+Epoch 3: 	96.61
+Epoch 5: 	97.2
+Epoch 7: 	97.62
+Epoch 9: 	97.71
+
+MLP - width=112 depth=2 dropout=False bn=True
+Epoch 1: 	96.58
+Epoch 3: 	97.91
+Epoch 5: 	98.11
+Epoch 7: 	98.29
+Epoch 9: 	98.43
+
+MLP - width=112 depth=1 dropout=False bn=True
+Epoch 1: 	96.43
+Epoch 3: 	97.61
+Epoch 5: 	98.07
+Epoch 7: 	98.16
+Epoch 9: 	98.36
+
+MLP - width=28 depth=1 dropout=True bn=True
+Epoch 1: 	92.69
+Epoch 3: 	95.5
+Epoch 5: 	96.41
+Epoch 7: 	97.02
+Epoch 9: 	97.32
+
+MLP - width=56 depth=1 dropout=True bn=True
+Epoch 1: 	94.64
+Epoch 3: 	96.66
+Epoch 5: 	97.31
+Epoch 7: 	97.61
+Epoch 9: 	97.82
+
+MLP - width=56 depth=3 dropout=True bn=True
+Epoch 1: 	95.32
+Epoch 3: 	97.05
+Epoch 5: 	97.57
+Epoch 7: 	97.68
+Epoch 9: 	98.05
+
+MLP - width=28 depth=3 dropout=True bn=True
+Epoch 1: 	93.6
+Epoch 3: 	96.23
+Epoch 5: 	97.03
+Epoch 7: 	97.6
+Epoch 9: 	97.73
+
+MLP - width=112 depth=2 dropout=True bn=True
+Epoch 1: 	96.56
+Epoch 3: 	97.81
+Epoch 5: 	98.19
+Epoch 7: 	98.42
+Epoch 9: 	98.41
+
+MLP - width=112 depth=1 dropout=True bn=True
+Epoch 1: 	96.1
+Epoch 3: 	97.62
+Epoch 5: 	98.09
+Epoch 7: 	98.18
+Epoch 9: 	98.33
+
+End
+
+
+Dropout in the middle layer:
+
+MLP - width=28 depth=3 dropout=True bn=False
+Epoch 1: 	17.08
+Epoch 3: 	13.25
+Epoch 5: 	14.51
+Epoch 7: 	18.68
+Epoch 9: 	21.62
+
+MLP - width=56 depth=3 dropout=True bn=False
+Epoch 1: 	19.03
+Epoch 3: 	18.65
+Epoch 5: 	11.33
+Epoch 7: 	14.28
+Epoch 9: 	32.46
+
+

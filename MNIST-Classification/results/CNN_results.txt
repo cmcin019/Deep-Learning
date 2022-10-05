@@ -1,0 +1,216 @@
+CNN - k=3 layers=2 dropout=False bn=False
+Epoch 1: 	81.94
+Epoch 3: 	84.46
+Epoch 5: 	84.9
+Epoch 7: 	84.86
+Epoch 9: 	85.28
+
+CNN - k=3 layers=1 dropout=False bn=False
+Epoch 1: 	74.02
+Epoch 3: 	84.2
+Epoch 5: 	84.71
+Epoch 7: 	85.11
+Epoch 9: 	85.1
+
+CNN - k=3 layers=3 dropout=False bn=False
+Epoch 1: 	11.35
+Epoch 3: 	83.65
+Epoch 5: 	84.47
+Epoch 7: 	84.76
+Epoch 9: 	84.72
+
+CNN - k=5 layers=3 dropout=False bn=False
+Epoch 1: 	72.79
+Epoch 3: 	75.81
+Epoch 5: 	76.64
+Epoch 7: 	77.28
+Epoch 9: 	78.17
+
+CNN - k=5 layers=1 dropout=False bn=False
+Epoch 1: 	82.68
+Epoch 3: 	91.32
+Epoch 5: 	91.74
+Epoch 7: 	92.17
+Epoch 9: 	92.59
+
+CNN - k=7 layers=1 dropout=False bn=False
+Epoch 1: 	75.16
+Epoch 3: 	84.29
+Epoch 5: 	84.55
+Epoch 7: 	84.9
+Epoch 9: 	85.07
+
+CNN - k=7 layers=3 dropout=False bn=False
+Epoch 1: 	22.19
+Epoch 3: 	73.1
+Epoch 5: 	75.59
+Epoch 7: 	76.94
+Epoch 9: 	92.73
+
+CNN - k=3 layers=3 dropout=True bn=False
+Epoch 1: 	11.35
+Epoch 3: 	83.62
+Epoch 5: 	84.72
+Epoch 7: 	85.21
+Epoch 9: 	85.67
+
+CNN - k=5 layers=3 dropout=True bn=False
+Epoch 1: 	26.19
+Epoch 3: 	82.04
+Epoch 5: 	83.63
+Epoch 7: 	84.62
+Epoch 9: 	85.84
+
+CNN - k=5 layers=1 dropout=True bn=False
+Epoch 1: 	82.27
+Epoch 3: 	90.67
+Epoch 5: 	91.28
+Epoch 7: 	91.86
+Epoch 9: 	92.17
+
+CNN - k=3 layers=1 dropout=True bn=False
+Epoch 1: 	82.54
+Epoch 3: 	84.37
+Epoch 5: 	91.28
+Epoch 7: 	91.88
+Epoch 9: 	92.13
+
+CNN - k=7 layers=1 dropout=True bn=False
+Epoch 1: 	82.73
+Epoch 3: 	90.6
+Epoch 5: 	91.42
+Epoch 7: 	91.6
+Epoch 9: 	92.1
+
+CNN - k=7 layers=3 dropout=True bn=False
+Epoch 1: 	10.57
+Epoch 3: 	24.04
+Epoch 5: 	80.16
+Epoch 7: 	91.38
+Epoch 9: 	93.87
+
+CNN - k=3 layers=3 dropout=False bn=True
+Epoch 1: 	93.17
+Epoch 3: 	96.23
+Epoch 5: 	97.34
+Epoch 7: 	97.82
+Epoch 9: 	97.66
+
+CNN - k=5 layers=3 dropout=False bn=True
+Epoch 1: 	95.39
+Epoch 3: 	97.71
+Epoch 5: 	98.39
+Epoch 7: 	98.56
+Epoch 9: 	98.75
+
+CNN - k=5 layers=1 dropout=False bn=True
+Epoch 1: 	94.22
+Epoch 3: 	96.53
+Epoch 5: 	97.15
+Epoch 7: 	97.65
+Epoch 9: 	97.89
+
+CNN - k=3 layers=1 dropout=False bn=True
+Epoch 1: 	94.27
+Epoch 3: 	96.06
+Epoch 5: 	96.64
+Epoch 7: 	97.01
+Epoch 9: 	97.31
+
+CNN - k=7 layers=1 dropout=False bn=True
+Epoch 1: 	95.0
+Epoch 3: 	97.32
+Epoch 5: 	97.91
+Epoch 7: 	98.2
+Epoch 9: 	98.4
+
+CNN - k=7 layers=3 dropout=False bn=True
+Epoch 1: 	95.26
+Epoch 3: 	97.34
+Epoch 5: 	97.92
+Epoch 7: 	98.11
+Epoch 9: 	98.28
+
+CNN - k=3 layers=3 dropout=True bn=True
+Epoch 1: 	94.82
+Epoch 3: 	96.9
+Epoch 5: 	97.42
+Epoch 7: 	97.84
+Epoch 9: 	98.05
+
+CNN - k=5 layers=3 dropout=True bn=True
+Epoch 1: 	94.16
+Epoch 3: 	97.25
+Epoch 5: 	97.93
+Epoch 7: 	98.31
+Epoch 9: 	98.53
+
+CNN - k=5 layers=1 dropout=True bn=True
+Epoch 1: 	94.39
+Epoch 3: 	96.32
+Epoch 5: 	97.14
+Epoch 7: 	97.53
+Epoch 9: 	97.69
+
+CNN - k=3 layers=1 dropout=True bn=True
+Epoch 1: 	94.02
+Epoch 3: 	96.12
+Epoch 5: 	96.54
+Epoch 7: 	97.03
+Epoch 9: 	97.37
+
+CNN - k=7 layers=1 dropout=True bn=True
+Epoch 1: 	94.85
+Epoch 3: 	97.2
+Epoch 5: 	97.79
+Epoch 7: 	98.09
+Epoch 9: 	98.33
+
+CNN - k=7 layers=3 dropout=True bn=True
+Epoch 1: 	93.36
+Epoch 3: 	96.44
+Epoch 5: 	97.56
+Epoch 7: 	98.23
+Epoch 9: 	98.23
+
+End
+
+
+Dropout in the middle layer:
+
+CNN - k=3 layers=2 dropout=True bn=False
+Epoch 1: 	71.61
+Epoch 3: 	84.43
+Epoch 5: 	91.34
+Epoch 7: 	91.65
+Epoch 9: 	92.0
+
+CNN - k=3 layers=1 dropout=True bn=False
+Epoch 1: 	82.58
+Epoch 3: 	84.41
+Epoch 5: 	91.22
+Epoch 7: 	91.83
+Epoch 9: 	91.97
+
+CNN - k=3 layers=3 dropout=True bn=False
+Epoch 1: 	81.89
+Epoch 3: 	84.09
+Epoch 5: 	84.0
+Epoch 7: 	84.07
+Epoch 9: 	84.87
+
+CNN - k=5 layers=3 dropout=True bn=False
+Epoch 1: 	35.45
+Epoch 3: 	82.83
+Epoch 5: 	84.4
+Epoch 7: 	85.08
+Epoch 9: 	86.71
+
+CNN - k=7 layers=3 dropout=False bn=False
+Epoch 1: 	61.5
+Epoch 3: 	75.52
+Epoch 5: 	76.97
+Epoch 7: 	86.24
+Epoch 9: 	87.13
+
+End
