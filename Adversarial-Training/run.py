@@ -1,16 +1,13 @@
 # Author	: Cristopher McIntyre Garcia 
-# Email	 : cmcin019@uottawa.ca
-# S-N	   : 300025114
+# Email		: cmcin019@uottawa.ca
+# S-N		: 300025114
 
 # Imports
 import argparse
-from email.mime import image
 import math
 import matplotlib.pyplot as plt
 import numpy as np
-from random import uniform, sample
-from sklearn.linear_model import ridge_regression
-from sympy import true
+from random import uniform
 from tqdm import tqdm 
 from os import system
 import os
@@ -66,7 +63,7 @@ class CNN(nn.Module):
 
 # Hyperparameters
 learning_rate = 0.001
-num_epochs = 20
+num_epochs = 5
 
 # Load training dataset
 train_dataset = datasets.MNIST(
@@ -130,10 +127,15 @@ def model_accuracy(model, pgd=None, plot=False):
 		with torch.no_grad():
 			outputs = model(images)
 			_, predicted = torch.max(outputs.data, 1)
+			# TODO: For targeted attack
+			# predicted = predicted - 1 % 10
 			if plot:
+				system('cls' if os.name == 'nt' else 'clear')
 				print([test_dataset.classes[i][0] for i in predicted])
-				imshow(torchvision.utils.make_grid(images.cpu().data, normalize=True), "Results")
-			
+				np_images = torchvision.utils.make_grid(images.cpu().data, normalize=True).numpy()
+				plt.imshow(np.transpose(np_images,(1,2,0)))
+				plt.show()
+
 			total += labels.size(0)
 			if device=='cuda:0':
 				correct += (predicted.to(device='cpu')==labels.to(device='cpu')).sum().item()
@@ -162,9 +164,7 @@ def PGD(images, labels, model, epsilon=0.3, steps=20, alpha=0.02):
 		score = model(perturbed)
 		model.zero_grad()
 		loss = criterion(score, labels)
-		# print(loss)
 		loss.backward(retain_graph=True)
-		# print()
 		z = perturbed + alpha * perturbed.grad.sign()
 
 		# TODO: 3
@@ -173,13 +173,10 @@ def PGD(images, labels, model, epsilon=0.3, steps=20, alpha=0.02):
 	return perturbed
 
 def PGD_Targeted(images, labels, model, targets={0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:7, 7:8, 8:9, 9:0}, epsilon=0.3, steps=20, alpha=0.02):
-	b, c, height, width = images.shape
-	target_labels = torch.tensor(list(map(lambda x: targets[x], labels.tolist()))).to(device=device)
-
+	
 	# TODO: 1
-	uniform_tensor = torch.FloatTensor([[[[uniform(-epsilon, epsilon) for _ in range(width)] for _ in range(height)] for _ in range(c)] for _ in range(b)]).to(device=device)
-	perturbed = images + uniform_tensor
-	perturbed_target = perturbed
+	perturbed = PGD(images, labels, model, epsilon=epsilon, steps=steps, alpha=alpha)
+	labels = torch.tensor(list(map(lambda x: targets[x], labels.tolist()))).to(device=device)
 
 	# Loss 
 	criterion = nn.CrossEntropyLoss()
@@ -187,38 +184,53 @@ def PGD_Targeted(images, labels, model, targets={0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6
 
 		# TODO: 2
 		perturbed.requires_grad = True
-		perturbed_target.requires_grad = True
 
 		score = model(perturbed)
 		model.zero_grad()
-		score = model(perturbed_target)
-		model.zero_grad()
 		loss = criterion(score, labels)
-		loss_target = criterion(score, target_labels)
-
 		loss.backward(retain_graph=True)
-		loss_target.backward(retain_graph=True)
-		# print()
-		z = perturbed + alpha * perturbed.grad.sign()
-		z = perturbed_target - alpha * perturbed_target.grad.sign()
+		z = perturbed - alpha * perturbed.grad.sign()
 
 		# TODO: 3
 		perturbed = torch.min(torch.max(z, images - epsilon), images + epsilon).detach()
-		perturbed_target = perturbed
 
-	return perturbed	
+	return perturbed
 
+def train_with_PGD(model, pgd):
+	model.to(device=device)
+	acc_list = []
 
-def imshow(img, title):
-    npimg = img.numpy()
-    fig = plt.figure(figsize = (5, 15))
-    plt.imshow(np.transpose(npimg,(1,2,0)))
-    plt.title(title)
-    plt.show()
+	# Loss and optimizer
+	criterion = nn.CrossEntropyLoss()
+	optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
+	accuracy = 0
 
+	for epoch in range(num_epochs):
+		system('cls' if os.name == 'nt' else 'clear')
+		print(f'Training {model.name}')
+		print(f'Epoch {epoch}: {accuracy}')
 
+		for _, (data, targets) in enumerate(tqdm(train_loader)):
+			data = data.to(device=device)
+			targets = targets.to(device=device)
+			perturbed = pgd(data, targets, model)
 
+			scores = model(perturbed)
+			loss = criterion(scores, targets)
 
+			optimizer.zero_grad()
+			loss.backward(retain_graph=True)
+
+			optimizer.step()
+
+		acc_list.append(accuracy)
+		accuracy = model_accuracy(model)
+
+	print(f'Final accuracy: {accuracy}')
+	if device=='cuda:0':
+		model.to(device='cpu')
+
+	return acc_list
 
 def main() -> None :
 
@@ -234,30 +246,41 @@ def main() -> None :
 	model = CNN(k=5, conv_layers=3, bn=True)
 	
 	if not load:
-		model_list = [
-			model
-		]
-
-		list = [train(m) for m in model_list]
-
+		acc_list = train(model)
 		system('cls' if os.name == 'nt' else 'clear')
-
-		for acc_list in range(len(list)):
-			print(model_list[acc_list].name)
-			for acc in range(len(list[acc_list])):
-				if acc % 2 == 0:
-					print(f'Epoch {acc+1}: \t{str(list[acc_list][acc])}')
-			print()
+		print(model.name)
+		for acc in range(len(acc_list)):
+			if acc % 2 == 0:
+				print(f'Epoch {acc+1}: \t{str(acc_list[acc])}')
 
 			if save:
-				torch.save(model_list[acc_list].state_dict(), 'models/model.pt')
+				torch.save(model.state_dict(), 'models/model.pt')
 	else:
 		model = CNN(k=5, conv_layers=3, bn=True)
 		model.load_state_dict(torch.load('models/model.pt'))
 		model.to(device=device)
-		# acc = model_accuracy(model, pgd=PGD, plot=plot)
+
+		# # acc = model_accuracy(model, pgd=PGD, plot=plot)
+		# acc = model_accuracy(model, pgd=PGD_Targeted, plot=plot)
+		# print(acc)
+		acc_1 = model_accuracy(model, pgd=PGD, plot=plot)
+		acc_11 = model_accuracy(model, pgd=PGD_Targeted, plot=plot)
+
+		acc_list = train_with_PGD(model, pgd=PGD_Targeted)
+		system('cls' if os.name == 'nt' else 'clear')
+		print(model.name)
+		for acc in range(len(acc_list)):
+			if acc % 2 == 0:
+				print(f'Epoch {acc+1}: \t{str(acc_list[acc])}')
+		print()
+		print(acc_1)
+		print(acc_11)
+		print()
+		acc = model_accuracy(model, pgd=PGD, plot=plot)
+		print(acc)
 		acc = model_accuracy(model, pgd=PGD_Targeted, plot=plot)
 		print(acc)
+
 
 if __name__ == "__main__":
 	main()
