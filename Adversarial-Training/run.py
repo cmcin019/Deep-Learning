@@ -2,6 +2,10 @@
 # Email		: cmcin019@uottawa.ca
 # S-N		: 300025114
 
+# Run:
+# python3 run.py -l -t 4 -s -g
+
+
 # Imports
 import argparse
 import math
@@ -220,7 +224,8 @@ def PGD_Targeted(images, labels, model, epsilon=epsilon, steps=steps, alpha=alph
 
 def train_with_PGD(model, pgd, pgd_per=[]):
 	model.to(device=device)
-	acc_list = []
+	acc_list_1 = []
+	acc_list_2 = []
 	acc_list_p = []
 	acc_list_np =[]
 	loss_list = []
@@ -233,14 +238,15 @@ def train_with_PGD(model, pgd, pgd_per=[]):
 	# Loss and optimizer
 	criterion = nn.CrossEntropyLoss()
 	optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
-	accuracy = 0
+	accuracy_1 = 0
+	accuracy_2 = 0
 
 	for epoch in range(num_epochs):
 		system('cls' if os.name == 'nt' else 'clear')
 		print(f'Training {model.name}')
 		print(pgd.__name__)
 		print(pgd_per)
-		print(f'Epoch {epoch}: {accuracy}')
+		print(f'Epoch {epoch}: {accuracy_1}')
 
 		for _, (data, targets) in enumerate(tqdm(train_loader)):
 			data = data.to(device=device)
@@ -268,8 +274,11 @@ def train_with_PGD(model, pgd, pgd_per=[]):
 			accuracy_p = model_accuracy(model, pgd=pgd, pgd_per=pgd_per, on_training=True)
 			acc_list_p.append(accuracy_p)
 
-		accuracy = model_accuracy(model)
-		acc_list.append(accuracy)
+		accuracy_1 = model_accuracy(model)
+		acc_list_1.append(accuracy_1)
+
+		accuracy_2 = model_accuracy(model, pgd=pgd, pgd_per=pgd_per)
+		acc_list_2.append(accuracy_2)
 
 	# TODO: Need to add observable plots
 	if show_graph:
@@ -301,15 +310,15 @@ def train_with_PGD(model, pgd, pgd_per=[]):
 	if device=='cuda:0':
 		model.to(device='cpu')
 
-	return acc_list
+	return acc_list_1, acc_list_2
 
 def experiment(original_model, model, pgd, plot=False, pgd_per=[]):
 	acc_before = model_accuracy(original_model, pgd=pgd, pgd_per=pgd_per, plot=plot)
 	acc_attack = None
 	if pgd.__name__ == 'PGD_Targeted':
 		acc_attack = model_accuracy(model, pgd=pgd, pgd_per=pgd_per, plot=plot, target_acc=True)
-	acc_list = train_with_PGD(model, pgd=pgd, pgd_per=pgd_per)
-	return (acc_before, acc_attack, acc_list)
+	acc_list_1, acc_list_2 = train_with_PGD(model, pgd=pgd, pgd_per=pgd_per)
+	return (acc_before, acc_attack, acc_list_1, acc_list_2)
 
 def run(model, plot, spgd, pgds=[PGD, PGD_Targeted], epsilons=[0, .1, .2, .3, .45], steps=1, alpha=0.01):
 	original_model = CNN(k=5, conv_layers=3, bn=True).to(device=device)
@@ -413,15 +422,10 @@ def main() -> None :
 		# plt.legend()
 
 		fig_1.savefig(f'images/Accuracy on Unperturbed Training Data.jpg', bbox_inches='tight', dpi=150)
-
 		fig_2.savefig(f'images/Loss on Unperturbed Training Data.jpg', bbox_inches='tight', dpi=150)
-
 		fig_2_iter.savefig(f'images/Loss on Unperturbed Training Data (iter).jpg', bbox_inches='tight', dpi=150)
-
 		fig_3.savefig(f'images/Accuracy on Perturbed Training Data.jpg', bbox_inches='tight', dpi=150)
-
-		fig_4.savefig(f'images/Loss on Perturbed Training Data.jpg', bbox_inches='tight', dpi=150)
-		
+		fig_4.savefig(f'images/Loss on Perturbed Training Data.jpg', bbox_inches='tight', dpi=150)	
 		fig_4_iter.savefig(f'images/Loss on Perturbed Training Data (iter).jpg', bbox_inches='tight', dpi=150)
 
 	# TODO: Training Evaluation
@@ -433,24 +437,34 @@ def main() -> None :
 	plt.close()
 	
 	fig, ax = plt.subplots()
-	ax.set_title('Accuracy on Perturbed Testing Data')
+	ax.set_title('Accuracy on Unperturbed Testing Data')
+
+	fig2, ax2 = plt.subplots()
+	ax2.set_title('Accuracy on Perturbed Testing Data')
 
 	for r in runs:
 		print()
 		for a in r:
 			ax.plot([n for n in range(len(a[4]))], a[4], label=f'{a[0]} - ϵ: {a[1][0]} - steps: {a[1][1]} - α: {a[1][2]}')
-
+			ax2.plot([n for n in range(len(a[5]))], a[5], label=f'{a[0]} - ϵ: {a[1][0]} - steps: {a[1][1]} - α: {a[1][2]}')
 			print(f'Algorithm: {a[0]}')
 			print(f'Ep: {a[1][0]} - Stps: {a[1][1]} - Alpha: {a[1][2]}')
 			print(f'Model Acc on Perturbed data: {a[2]}')
 			if a[0] == 'PGD_Targeted':
 				print(f'Attack Acc :  {a[3]}')
-			print(f'Acc After Training:  {a[4]}')
+			print(f'Acc After Training    :  {a[4]}')
+			print(f'Acc After Training (P):  {a[5]}')
 			print()
+
+	plt.close()
 	
 	ax.set(xlabel='Epoch', ylabel='Accuracy')
-	plt.legend()
-	fig.savefig(f'images/Accuracy on Perturbed Testing Data.jpg', bbox_inches='tight', dpi=150)
+	ax.legend()
+	fig.savefig(f'images/Accuracy on Unperturbed Testing Data.jpg', bbox_inches='tight', dpi=150)
+
+	ax2.set(xlabel='Epoch', ylabel='Accuracy')
+	ax2.legend()
+	fig2.savefig(f'images/Accuracy on Perturbed Testing Data.jpg', bbox_inches='tight', dpi=150)
 
 	pgds=[PGD, PGD_Targeted]
 	epsilons=[0, .1, .2, .3, .45]
@@ -462,17 +476,28 @@ def main() -> None :
 		print(f"Model: {runs[m][0][0]} - ϵ: {runs[m][0][1][0]} - steps: {runs[m][0][1][1]} - α: {runs[m][0][1][2]}")
 		fig_acc_test, ax_acc_test = plt.subplots()
 		ax_acc_test.set_title('Accuracy on Perturbed Testing Data')
+
+		fig_acc_test_np, ax_acc_test_np = plt.subplots()
+		ax_acc_test_np.set_title('Accuracy on Unperturbed Testing Data')
 		for alg in pgds:
 			acc = []
+			acc_np =[]
 			for eps in epsilons:
 				ac = model_accuracy(models[m],pgd=alg, plot=p, pgd_per=[eps, steps, alpha])
+				ac_np = model_accuracy(models[m])
 				print(f'40-step {alg.__name__} ϵ: {eps} - α: {alpha} \t {ac}')
 				acc.append(ac)
+				acc_np.append(ac_np)
 			ax_acc_test.plot([n for n in epsilons], acc, label=f'{alg.__name__}')	
 			ax_acc_test.legend()
+
+			ax_acc_test_np.plot([n for n in epsilons], acc_np, label=f'{alg.__name__}')	
+			ax_acc_test_np.legend()
 		p = False
 		ax_acc_test.set(xlabel='ϵ', ylabel='Accuracy')
-		fig_acc_test.savefig(f'images/Model: {runs[m][0][0]} - ϵ: {runs[m][0][1][0]} - steps: {runs[m][0][1][1]} - α: {runs[m][0][1][2]}.jpg', bbox_inches='tight', dpi=150)
+		fig_acc_test.savefig(f'images/Model: {runs[m][0][0]} - ϵ: {runs[m][0][1][0]} - steps: {runs[m][0][1][1]} - α: {runs[m][0][1][2]} - Perturbed.jpg', bbox_inches='tight', dpi=150)
+		ax_acc_test_np.set(xlabel='ϵ', ylabel='Accuracy')
+		fig_acc_test_np.savefig(f'images/Model: {runs[m][0][0]} - ϵ: {runs[m][0][1][0]} - steps: {runs[m][0][1][1]} - α: {runs[m][0][1][2]}.jpg', bbox_inches='tight', dpi=150)
 
 	plt.close()
 
