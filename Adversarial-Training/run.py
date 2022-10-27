@@ -466,11 +466,17 @@ def main() -> None :
 	ax2.legend()
 	fig2.savefig(f'images/Accuracy on Perturbed Testing Data.jpg', bbox_inches='tight', dpi=150)
 
+	plt.close()
+
 	pgds=[PGD, PGD_Targeted]
 	epsilons=[0, .1, .2, .3, .45]
 	steps=40
 	alpha=0.01
 	p = True
+
+	fig_acc_test_over_all, ax_acc_test_over_all = plt.subplots()
+	ax_acc_test_over_all.set_title('Accuracy on Perturbed Testing Data')
+
 	for m in range(len(models)):
 		print()
 		print(f"Model: {runs[m][0][0]} - ϵ: {runs[m][0][1][0]} - steps: {runs[m][0][1][1]} - α: {runs[m][0][1][2]}")
@@ -488,16 +494,23 @@ def main() -> None :
 				print(f'40-step {alg.__name__} ϵ: {eps} - α: {alpha} \t {ac}')
 				acc.append(ac)
 				acc_np.append(ac_np)
-			ax_acc_test.plot([n for n in epsilons], acc, label=f'{alg.__name__}')	
+
+			ax_acc_test.plot([n for n in epsilons], acc, label=f'{alg.__name__} - ϵ: {runs[m][0][1][0]} - steps: {runs[m][0][1][1]} - α: {runs[m][0][1][2]}')	
 			ax_acc_test.legend()
 
-			ax_acc_test_np.plot([n for n in epsilons], acc_np, label=f'{alg.__name__}')	
+			ax_acc_test_np.plot([n for n in epsilons], acc_np, label=f'{alg.__name__} - ϵ: {runs[m][0][1][0]} - steps: {runs[m][0][1][1]} - α: {runs[m][0][1][2]}')	
 			ax_acc_test_np.legend()
+
+			ax_acc_test_over_all.plot([n for n in epsilons], acc, label=f'{alg.__name__} - ϵ: {runs[m][0][1][0]} - steps: {runs[m][0][1][1]} - α: {runs[m][0][1][2]}')	
+			ax_acc_test_over_all.legend()
 		p = False
+
 		ax_acc_test.set(xlabel='ϵ', ylabel='Accuracy')
 		fig_acc_test.savefig(f'images/Model: {runs[m][0][0]} - ϵ: {runs[m][0][1][0]} - steps: {runs[m][0][1][1]} - α: {runs[m][0][1][2]} - Perturbed.jpg', bbox_inches='tight', dpi=150)
 		ax_acc_test_np.set(xlabel='ϵ', ylabel='Accuracy')
 		fig_acc_test_np.savefig(f'images/Model: {runs[m][0][0]} - ϵ: {runs[m][0][1][0]} - steps: {runs[m][0][1][1]} - α: {runs[m][0][1][2]}.jpg', bbox_inches='tight', dpi=150)
+	ax_acc_test_over_all.set(xlabel='ϵ', ylabel='Accuracy')
+	fig_acc_test_over_all.savefig(f'images/Model: {runs[m][0][0]} - ϵ: {runs[m][0][1][0]} - steps: {runs[m][0][1][1]} - α: {runs[m][0][1][2]} - overall.jpg', bbox_inches='tight', dpi=150)
 
 	plt.close()
 
