@@ -29,21 +29,35 @@ from models import vae, gan, wgan
 # Data import
 from data import mnist, cifar10
 
+parser = argparse.ArgumentParser()
+parser.add_argument("-d", type=str, default='m', help="dataset (m or c)")
+parser.add_argument("-g", type=str, default='vae', help="generator (vae, gan, wgan)")
+opt = parser.parse_args()
+
+
 # Set device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(f'Device: {device}')
 
 # Data loaders
-# train_loader, test_loader, classes, (c, h, w) = mnist()
-train_loader, test_loader, classes, (c, h, w) = cifar10()
+if opt.d == 'm':
+	train_loader, test_loader, classes, (c, h, w) = mnist()
+else:
+	train_loader, test_loader, classes, (c, h, w) = cifar10()
 
 pad = transforms.Pad((0,0,0,0))
 if h == 28:
 	pad = transforms.Pad((2,2,2,2))
 
 # Training Hyperparameters
-lr = 0.005
-num_epochs = 100
+if opt.g == 'vae':
+	lr = 2e-4
+if opt.g == 'gan':
+	lr = 2e-4
+else:
+	lr = 5e-5
+num_epochs = 20
+K = 5
 
 def train_vae(model):
 	model.to(device=device)
@@ -75,8 +89,8 @@ def train_vae(model):
 
 def train_gan(model):
 	model.to(device=device)
-	gen_optimizer = optim.Adam(model.generator.parameters(), lr=lr)
-	disc_optimizer = optim.Adam(model.discriminator.parameters(), lr=lr)
+	gen_optimizer = optim.Adam(model.generator.parameters(), lr=lr, betas=(.5, .999))
+	disc_optimizer = optim.Adam(model.discriminator.parameters(), lr=lr, betas=(.5, .999))
 	# loss_fn = nn.BCELoss(reduction="sum")
 	train_loss=(0,0)
 	for epoch in range(num_epochs):
@@ -84,22 +98,22 @@ def train_gan(model):
 		print(f'Training {model.__class__.__name__}')
 		print(f'Epoch {epoch}')
 		print(f'partial train loss (single batch): {train_loss}')
+		k = 1
 		for _, (data, _) in enumerate(tqdm(train_loader)):
 			data = pad(data)
-				# print(data.shape)
-			# data = data.to(device=device).view(-1 ,input_dim)
 			data = data.to(device=device)
 			_, gen_loss, disc_loss = model(data)
 
-			model.generator.zero_grad()
-			gen_loss.backward(retain_graph=True)
-			# gen_optimizer.step()
-
 			model.discriminator.zero_grad()
-			disc_loss.backward()
+			disc_loss.backward(retain_graph=True)
 
-			gen_optimizer.step()
+			if not k % K == 0:
+				model.generator.zero_grad()
+				gen_loss.backward()
+
 			disc_optimizer.step()
+			if not k % K == 0:
+				gen_optimizer.step()
 			
 		train_loss=(gen_loss.item(), disc_loss.item())
 
@@ -132,7 +146,7 @@ def inference_vae(model, digit, num_examples=1):
 	encodings_digit = []
 	for d in range(10):
 		with torch.no_grad():
-			save_image(images[d], f"out_vae/ref_{d}.png")
+			save_image(images[d], f"out_vae/{'MNIST' if opt.d == 'm' else 'CIFAR10'}/ref_{d}.png")
 			mu, sigma = model.to('cpu').encoder(torch.unsqueeze(images[d], 0).to('cpu'))
 		encodings_digit.append((mu, sigma))
 
@@ -142,7 +156,7 @@ def inference_vae(model, digit, num_examples=1):
 		z = mu + sigma * epsilon
 		out = model.decoder(z)
 		out = out.view(-1, c, 32, 32)
-		save_image(out, f"out_vae/generated_{digit}_ex{example}.png")
+		save_image(out, f"out_vae/{'MNIST' if opt.d == 'm' else 'CIFAR10'}/generated_{digit}_ex{example}.png")
 
 	model.train()
 
@@ -169,13 +183,13 @@ def inference_gan(model, digit, num_examples=1):
 
 	encodings_digit = []
 	for d in range(10):
-		save_image(images[d], f"out_gan/ref_{d}.png")
+		save_image(images[d], f"out_gan/{'MNIST' if opt.d == 'm' else 'CIFAR10'}/ref_{d}.png")
 
 	for example in range(num_examples):
 		fixed_noise = torch.randn(1, 100, 1, 1).to(device)
 		out = model.generator(fixed_noise)
 		out = out.view(-1, c, 32, 32)
-		save_image(out, f"out_gan/generated_{digit}_ex{example}.png")
+		save_image(out, f"out_gan/{'MNIST' if opt.d == 'm' else 'CIFAR10'}/generated_{digit}_ex{example}.png")
 
 	model.train()
 
@@ -195,9 +209,15 @@ def run_wgan():
 	pass
 
 def main():
-	run_vae()
-	# run_gan()
-	# run_wgan()
+	if opt.g == 'vae':
+		print('VAE')
+		run_vae()
+	elif opt.g == 'gan':
+		print('GAN')
+		run_gan()
+	else:
+		print('WGAN')
+		run_wgan()
 
 
 if __name__ == "__main__":

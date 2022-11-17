@@ -11,7 +11,7 @@ def mnist(batch_size=64):
 		transform = transforms.ToTensor(),
 		download = True,
 	)
-	train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+	train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
 	# Load testing dataset
 	test_dataset = datasets.MNIST(
@@ -20,7 +20,7 @@ def mnist(batch_size=64):
 		transform = transforms.ToTensor(),
 		download = False,
 	)
-	test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=True)
+	test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
 
 	classes = [str(x) for x in range(10)]
 
