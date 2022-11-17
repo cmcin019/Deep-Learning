@@ -54,10 +54,12 @@ if opt.g == 'vae':
 	lr = 2e-4
 if opt.g == 'gan':
 	lr = 2e-4
-else:
+	K = 5
+else: # wgan
 	lr = 5e-5
+	K = 5
+	weight_c = 0.01
 num_epochs = 20
-K = 5
 
 def train_vae(model):
 	model.to(device=device)
@@ -71,8 +73,6 @@ def train_vae(model):
 		print(f'partial train loss (single batch): {train_loss}')
 		for _, (data, _) in enumerate(tqdm(train_loader)):
 			data = pad(data)
-				# print(data.shape)
-			# data = data.to(device=device).view(-1 ,input_dim)
 			data = data.to(device=device)
 			_, loss = model(data)
 
@@ -89,9 +89,9 @@ def train_vae(model):
 
 def train_gan(model):
 	model.to(device=device)
+	discriminator = model.discriminator if opt.g == 'gan' else model.critic
 	gen_optimizer = optim.Adam(model.generator.parameters(), lr=lr, betas=(.5, .999))
-	disc_optimizer = optim.Adam(model.discriminator.parameters(), lr=lr, betas=(.5, .999))
-	# loss_fn = nn.BCELoss(reduction="sum")
+	disc_optimizer = optim.Adam(discriminator.parameters(), lr=lr, betas=(.5, .999))
 	train_loss=(0,0)
 	for epoch in range(num_epochs):
 		system('cls' if os.name == 'nt' else 'clear')
@@ -104,8 +104,12 @@ def train_gan(model):
 			data = data.to(device=device)
 			_, gen_loss, disc_loss = model(data)
 
-			model.discriminator.zero_grad()
+			discriminator.zero_grad()
 			disc_loss.backward(retain_graph=True)
+
+			if opt.g == 'wgan':
+				for p in discriminator.parameters():
+					p.data.clamp_(-weight_c, weight_c)
 
 			if not k % K == 0:
 				model.generator.zero_grad()
@@ -183,13 +187,13 @@ def inference_gan(model, digit, num_examples=1):
 
 	encodings_digit = []
 	for d in range(10):
-		save_image(images[d], f"out_gan/{'MNIST' if opt.d == 'm' else 'CIFAR10'}/ref_{d}.png")
+		save_image(images[d], f"out_{opt.g}/{'MNIST' if opt.d == 'm' else 'CIFAR10'}/ref_{d}.png")
 
 	for example in range(num_examples):
 		fixed_noise = torch.randn(1, 100, 1, 1).to(device)
 		out = model.generator(fixed_noise)
 		out = out.view(-1, c, 32, 32)
-		save_image(out, f"out_gan/{'MNIST' if opt.d == 'm' else 'CIFAR10'}/generated_{digit}_ex{example}.png")
+		save_image(out, f"out_{opt.g}/{'MNIST' if opt.d == 'm' else 'CIFAR10'}/generated_{digit}_ex{example}.png")
 
 	model.train()
 
@@ -206,7 +210,10 @@ def run_gan():
 		inference_gan(model, idx, num_examples=5)
 
 def run_wgan():
-	pass
+	model = wgan(in_channels=c)
+	train_gan(model)
+	for idx in range(10):
+		inference_gan(model, idx, num_examples=5)
 
 def main():
 	if opt.g == 'vae':

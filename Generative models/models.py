@@ -264,7 +264,7 @@ class Generator(nn.Module):
 
 class Discriminator(nn.Module):
 	"""Some Information about Discriminator"""
-	def __init__(self, in_channels, hidden_dims=[32, 64, 128, 256, 512]):
+	def __init__(self, in_channels, hidden_dims=[32, 64, 128, 256, 512], is_critic=False):
 		super(Discriminator, self).__init__()
 
 		h_size = 2 ** ((5 - len(hidden_dims))*2)
@@ -300,11 +300,16 @@ class Discriminator(nn.Module):
 		)
 
 		self.conv = nn.Sequential(*modules)
-
-		self.final_layer = nn.Sequential(
-			nn.Linear(hidden_dims[-1] * h_size, 1),
-			nn.Sigmoid()
-		)
+		
+		if is_critic:
+			self.final_layer = nn.Sequential(
+				nn.Linear(hidden_dims[-1] * h_size, 1)
+			)		
+		else:
+			self.final_layer = nn.Sequential(
+				nn.Linear(hidden_dims[-1] * h_size, 1),
+				nn.Sigmoid()
+			)
 
 	def forward(self, x):
 		# print(x.shape)
@@ -363,20 +368,62 @@ def gan(z_dim=100, in_channels=3, hidden_dims=[32, 64, 128, 256, 512]):
 	gan = GAN(generator, discriminator)
 	return gan
 
-# WGAN components
-class Critic(nn.Module):
-	"""Some Information about Critic"""
-	def __init__(self):
-		super(Critic, self).__init__()
+# # WGAN components
+# class Critic(nn.Module):
+# 	"""Some Information about Critic"""
+# 	def __init__(self):
+# 		super(Critic, self).__init__()
+
+# 	def forward(self, x):
+
+# 		return x
+class WGAN(nn.Module):
+	"""Some Information about GAN"""
+	def __init__(self, generator, critic):
+		super(WGAN, self).__init__()
+		self.initialize(generator)
+		self.initialize(critic)
+		self.generator = generator
+		self.critic = critic
+
+	def initialize(self, model):
+		for m in model.modules():
+			if isinstance(m, (nn.ConvTranspose2d, nn.Conv2d, nn.BatchNorm2d)):
+				nn.init.normal_(m.weight.data, 0.0, 0.02)
+
+	def generator_loss(self, fake):
+		gen_loss = -torch.mean(fake)
+		return gen_loss
+
+	def critic_loss(self, critic_real, critic_fake):
+		critic_loss = -(torch.mean(critic_real) - torch.mean(critic_fake)) 
+		return critic_loss
 
 	def forward(self, x):
+		noise = torch.randn(x.shape[0], 100)
+		if torch.cuda.is_available():
+			noise = noise.to(device=device)
 
-		return x
+		fake = self.generator(noise)
+
+		critic_real = self.critic(x).view(-1)
+		critic_fake = self.critic(fake).view(-1)
+
+		critic_out = self.critic(fake).view(-1)
+
+		gen_loss = self.generator_loss(critic_out)
+		critic_loss = self.critic_loss(critic_real, critic_fake)
+		if torch.cuda.is_available():
+			noise = noise.to(device='cpu')
+		return fake, gen_loss, critic_loss
 
 
-def wgan():
-	pass
-
+def wgan(z_dim=100, in_channels=3, hidden_dims=[32, 64, 128, 256, 512]):
+	critic = Discriminator(in_channels, hidden_dims=hidden_dims, is_critic=True)
+	hidden_dims.reverse()
+	generator = Generator(z_dim, in_channels, hidden_dims=hidden_dims)
+	wgan = WGAN(generator, critic)
+	return wgan
 # Test
 
 def vae_test():
