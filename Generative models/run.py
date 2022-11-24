@@ -33,7 +33,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-d", type=str, default='m', help="Dataset (m or c)")
 parser.add_argument("-g", type=str, default='vae', help="Generator (vae, gan, wgan)")
 parser.add_argument("-r", type=int, default=32, help="Resize image")
-parser.add_argument("--depth", type=int, default=5, help="Depth of model (1 - 5)")
 parser.add_argument("--epochs", type=int, default=40, help="Number of epochs")
 parser.add_argument("-z", type=int, default=-1, help="Z dimention")
 parser.add_argument("--plot", help="Save plots", action="store_true", default=False)
@@ -46,15 +45,18 @@ opt = parser.parse_args()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(f'Device: {device}')
 
-# Data loaders
-if opt.d == 'm':
-	train_loader, test_loader, classes, (c, h, w) = mnist(ratio=opt.r)
-else:
-	train_loader, test_loader, classes, (c, h, w) = cifar10(ratio=opt.r)
+def get_data(ratio=None):
+	if ratio==None:
+		ratio=opt.r
+	# Data loaders
+	if opt.d == 'm':
+		train_loader, test_loader, classes, (c, h, w) = mnist(ratio=ratio)
+	else:
+		train_loader, test_loader, classes, (c, h, w) = cifar10(ratio=ratio)
+	return train_loader, test_loader, classes, (c, h, w)
 
 # Training hyperparameters
 num_epochs = opt.epochs
-hidden_dims = [int(math.pow(2, 5 + x)) for x in range(opt.depth)]
 K = 1
 
 # Custom hyperparameters
@@ -89,52 +91,75 @@ def _plot(model, loss_list, title, ylabel):
 		ax.plot([n for n in range(len(loss[0]))], loss[0], label=loss[1])
 		ax.legend()
 	ax.set_title(title)
-	ax.set(xlabel='Epoch', ylabel=ylabel)
+	ax.set(xlabel='Iterations', ylabel=ylabel)
 	fig.savefig( f"out_{model.__class__.__name__}/{'MNIST' if opt.d == 'm' else 'CIFAR10'}/plots/{title}.png", bbox_inches='tight', dpi=150)
 	plt.close()
 	pass
 
 # Training
-def train_vae(model):
+def train_vae(model, ratio=None):
+	train_loader, _, _, _ = get_data(ratio=ratio)
 	model.to(device=device)
 	optimizer = optim.Adam(model.parameters(), lr=3e-4)
+	
 	train_loss=0
 	loss_list = []
+	
+	path = f"out_{model.__class__.__name__}/{'MNIST' if opt.d == 'm' else 'CIFAR10'}/training/Depth {len(model.generator.hidden_dims)-1} with Z-dim {model.generator.z_dim}"
+	if opt.monitor:
+		t = transforms.Resize(32)
+		if not os.path.isdir(path):
+			os.makedirs(path)
+	
 	for epoch in range(num_epochs):
 		_info(model, model.encoder, epoch, train_loss)
 		for _, (data, _) in enumerate(tqdm(train_loader)):
 			data = data.to(device=device)
 			gen_data, loss, _ = model(data)
+			
+			if opt.monitor:
+				data = t(data)
+				gen_data = t(gen_data)
 
 			optimizer.zero_grad()
 			loss.backward()
 			optimizer.step()
-			
+			loss_list.append(loss.item())
 		train_loss=loss.item()
-		loss_list.append(train_loss)
-
+		# loss_list.append(train_loss)
 		if opt.monitor:
-			save_image(gen_data.data[:25], f"out_{model.__class__.__name__}/{'MNIST' if opt.d == 'm' else 'CIFAR10'}/images/epoch_{epoch}.png", nrow=5, normalize=True)
+			save_image(data.data[:30], path + f"/epoch_{epoch}_original.png", nrow=6, normalize=True)
+			save_image(gen_data.data[:30], path + f"/epoch_{epoch}.png", nrow=6, normalize=True)
 
 	if device=='cuda:0':
 		model.to(device='cpu')
 
 	return (loss_list, f"Depth {len(model.encoder.hidden_dims)-1} with Z-dim {model.encoder.z_dim}")
 
-def train_gan(model):
+def train_gan(model, ratio=None):
+	train_loader, _, _, _ = get_data(ratio=ratio)
 	model.to(device=device)
 	name = model.__class__.__name__
 	if name == 'GAN':
+		K=1
 		discriminator = model.discriminator
 		gen_optimizer = optim.Adam(model.generator.parameters(), lr=2e-4, betas=(.5, .999))
 		disc_optimizer = optim.Adam(discriminator.parameters(), lr=2e-4, betas=(.5, .999))
 	else :
+		K=5
 		discriminator = model.critic
 		gen_optimizer = optim.RMSprop(model.generator.parameters(), lr=5e-5)
 		disc_optimizer = optim.RMSprop(discriminator.parameters(), lr=5e-5)	
-
+	
 	train_loss=(0,0)
 	loss_list = []
+	
+	path = f"out_{model.__class__.__name__}/{'MNIST' if opt.d == 'm' else 'CIFAR10'}/training/Depth {len(model.generator.hidden_dims)-1} with Z-dim {model.generator.z_dim}"
+	if opt.monitor:
+		t = transforms.Resize(32)
+		if not os.path.isdir(path):
+			os.makedirs(path)
+	
 	for epoch in range(num_epochs):
 		_info(model, model.generator, epoch, train_loss)
 		for i, (data, _) in enumerate(tqdm(train_loader)):
@@ -151,10 +176,9 @@ def train_gan(model):
 			# 	if name == 'WGAN':
 			# 		for p in discriminator.parameters():
 			# 			p.data.clamp_(-weight_c, weight_c)
-
+			discriminator.zero_grad()
 			_, _, disc_loss = model(data)
 
-			discriminator.zero_grad()
 			disc_loss.backward(retain_graph=True)
 			disc_optimizer.step()
 			
@@ -163,20 +187,25 @@ def train_gan(model):
 					p.data.clamp_(-weight_c, weight_c)
 
 			if i % K == 0:
-				gen_data, gen_loss, disc_loss = model(data)
 				model.generator.zero_grad()
+				gen_data, gen_loss, disc_loss = model(data)
 				gen_loss.backward()
 				gen_optimizer.step()
+				loss_list.append(gen_loss.item())
+				if opt.monitor:
+					data = t(data)
+					gen_data = t(gen_data)
 			
 		train_loss=(gen_loss.item(), disc_loss.item())
-		loss_list.append(train_loss[1])
+		# loss_list.append(train_loss[0])
 		
 		if gen_loss < 0.1 and epoch > num_epochs//1.2 and name == 'WGAN':
 			_info(model, model.generator, epoch, train_loss)
 			break
 		
 		if opt.monitor:
-			save_image(gen_data.data[:25], f"out_{model.__class__.__name__}/{'MNIST' if opt.d == 'm' else 'CIFAR10'}/images/epoch_{epoch}.png", nrow=5, normalize=True)
+			save_image(data.data[:30], path + f"/epoch_{epoch}_ref.png", nrow=6, normalize=True)
+			save_image(gen_data.data[:30], path + f"/epoch_{epoch}.png", nrow=6, normalize=True)
 
 	if device=='cuda:0':
 		model.to(device='cpu')
@@ -238,83 +267,83 @@ def inference_gan(model, digit, num_examples=1):
 
 # Experiment functions
 def experiment_vae():
-	z_dim_list = [2, 20, 100, 200]
-	hidden_dims_list = [[int(math.pow(2, 5 + x)) for x in range(depth+1)] for depth in range(5)]
-	for hidden_dims in hidden_dims_list:
+	z_dim_list = [2, 20, 100]
+	img_sizes = [16,32,64]
+	for size in img_sizes:
 		experiment_list = []
 		for z_dim in z_dim_list:
 			torch.cuda.empty_cache()
-			model = vae(c, z_dim=z_dim, hidden_dims=hidden_dims, ratio=h, kl_factor=0.025 if opt.d == 'm' else 0.0025)
-			loss_list = train_vae(model)
+			model = vae(c, z_dim=z_dim, ratio=size, kl_factor=0.25 if opt.d == 'm' else 0.0025)
+			loss_list = train_vae(model, ratio=size)
 			experiment_list.append(loss_list)
-		_plot(model, experiment_list, f"VAE x {len(hidden_dims)} - {'MNIST' if opt.d == 'm' else 'CIFAR10'}", "Loss")
+		_plot(model, experiment_list, f"VAE x {size} - {'MNIST' if opt.d == 'm' else 'CIFAR10'}", "Loss")
 
 def experiment_gan():
-	z_dim_list = [2, 20, 100, 200]
-	hidden_dims_list = [[int(math.pow(2, 5 + x)) for x in range(depth+1)] for depth in range(5)]
-	for hidden_dims in hidden_dims_list:
+	z_dim_list = [2, 20, 100]
+	img_sizes = [16,32,64]
+	for size in img_sizes:
 		experiment_list = []
 		for z_dim in z_dim_list:
 			torch.cuda.empty_cache()
-			model = gan(z_dim=z_dim, in_channels=c, hidden_dims=hidden_dims, ratio=h)
-			loss_list = train_gan(model)
+			model = gan(z_dim=z_dim, in_channels=c, ratio=size)
+			loss_list = train_gan(model, ratio=size)
 			experiment_list.append(loss_list)
-		_plot(model, experiment_list, f"GAN x {len(hidden_dims)} - {'MNIST' if opt.d == 'm' else 'CIFAR10'}", "JSD")
+		_plot(model, experiment_list, f"GAN x {size} - {'MNIST' if opt.d == 'm' else 'CIFAR10'}", "JSD")
 
 def experiment_wgan():
-	z_dim_list = [2, 20, 100, 200]
-	hidden_dims_list = [[int(math.pow(2, 5 + x)) for x in range(depth+1)] for depth in range(5)]
-	for hidden_dims in hidden_dims_list:
+	z_dim_list = [2, 20, 100]
+	img_sizes = [16,32,64]
+	for size in img_sizes:
 		experiment_list = []
 		for z_dim in z_dim_list:
 			torch.cuda.empty_cache()
-			model = wgan(z_dim=z_dim, in_channels=c, hidden_dims=hidden_dims, ratio=h)
-			loss_list = train_gan(model)
+			model = wgan(z_dim=z_dim, in_channels=c, ratio=size)
+			loss_list = train_gan(model, ratio=size)
 			experiment_list.append(loss_list)
-		_plot(model, experiment_list, f"WGAN x {len(hidden_dims)} - {'MNIST' if opt.d == 'm' else 'CIFAR10'}", "EMD")
+		_plot(model, experiment_list, f"WGAN x {size} - {'MNIST' if opt.d == 'm' else 'CIFAR10'}", "EMD")
 
-
+train_loader, test_loader, classes, (c, h, w) = get_data(ratio=opt.r)
 # Run functions
 def run_vae():
-	model = vae(c, z_dim=z_dim, hidden_dims=hidden_dims, ratio=h, kl_factor=0.025 if opt.d == 'm' else 0.0025)
+	model = vae(c, z_dim=z_dim, ratio=h, kl_factor=25 if opt.d == 'm' else 0.0025)
 	_ = train_vae(model)
 	for idx in range(10):
 		inference_vae(model, idx, num_examples=5)
 
 def run_gan():
-	model = gan(z_dim=z_dim, in_channels=c, hidden_dims=hidden_dims, ratio=h)
+	model = gan(z_dim=z_dim, in_channels=c,ratio=h)
 	_ = train_gan(model)
 	for idx in range(10):
 		inference_gan(model, idx, num_examples=5)
 
 def run_wgan():
-	model = wgan(z_dim=z_dim, in_channels=c, hidden_dims=hidden_dims, ratio=h)
+	model = wgan(z_dim=z_dim, in_channels=c, ratio=h)
 	_ = train_gan(model)
 	for idx in range(10):
 		inference_gan(model, idx, num_examples=5)
 
 def main():
 	if not opt.exp:
-		if opt.g == 'vae':
+		if opt.g == 'vae' or opt.g == 'all':
 			print('VAE')
 			run_vae()
-		elif opt.g == 'gan':
+		if opt.g == 'gan' or opt.g == 'all' or opt.g == 'gans':
 			print('GAN')
 			run_gan()
-		else:
+		if opt.g == 'wgan' or opt.g == 'all' or opt.g == 'gans':
 			print('WGAN')
 			run_wgan()
 	else:
-		if opt.g == 'vae':
+		if opt.g == 'vae' or opt.g == 'all':
 			print('VAE')
 			experiment_vae()
-		elif opt.g == 'gan':
+		if opt.g == 'gan' or opt.g == 'all' or opt.g == 'gans':
 			print('GAN')
 			experiment_gan()
-		else:
+		if opt.g == 'wgan' or opt.g == 'all' or opt.g == 'gans':
 			print('WGAN')
 			experiment_wgan()
-		
+
 
 	# experiment_vae()
 

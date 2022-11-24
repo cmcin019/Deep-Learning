@@ -19,12 +19,12 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # VAE components
 class Encoder(nn.Module):
 	"""Some Information about Encoder"""
-	def __init__(self, in_channels, z_dim=20, hidden_dims=[32, 64, 128, 256, 512], ratio=32):
+	def __init__(self, in_channels, z_dim=20, ratio=32):
 		super(Encoder, self).__init__()
+
+		h_size =  int(math.log2(ratio)) -1
 		
-		h_size = 2 ** ((int(math.log2(ratio)) - len(hidden_dims))*2)
-		_hidden_dims = [in_channels] + hidden_dims
-		
+		_hidden_dims = [in_channels] + [32*2**x for x in range(h_size)]
 		self.hidden_dims = _hidden_dims
 		self.z_dim = z_dim
 
@@ -35,18 +35,16 @@ class Encoder(nn.Module):
 					nn.Conv2d(
 						_hidden_dims[i], 
 						_hidden_dims[i+1], 
-						kernel_size=3, 
+						kernel_size=4, 
 						stride=2, 
 						padding=1
 					),
 					nn.BatchNorm2d(_hidden_dims[i+1]),
-					nn.ReLU()
+					nn.LeakyReLU(.2)
 				)
 			)
-
 		self.conv = nn.Sequential(*modules)
-
-		self.h_layer = nn.Linear(_hidden_dims[-1] * h_size, _hidden_dims[-1])
+		self.h_layer = nn.Linear(_hidden_dims[-1] *4, _hidden_dims[-1])
 
 		self.mu_layer = nn.Linear(_hidden_dims[-1], z_dim)
 		self.std_layer = nn.Linear(_hidden_dims[-1], z_dim)
@@ -67,66 +65,72 @@ class Encoder(nn.Module):
 
 class Decoder(nn.Module):
 	"""Some Information about Decoder"""
-	def __init__(self, out_channels, z_dim=20, hidden_dims=[512, 256, 128, 64, 32], ratio=32):
+	def __init__(self, out_channels, z_dim=20, ratio=32):
 		super(Decoder, self).__init__()
 
-		self.z_linear = nn.Linear(z_dim, hidden_dims[0] * 4 ** (1 + ((int(math.log2(ratio))) - len(hidden_dims))))
-
-		self.v = 2 * 2 ** ((int(math.log2(ratio))) - len(hidden_dims))
-
-		_hidden_dims = hidden_dims + [out_channels]
+		h_size = int(math.log2(ratio)) 
 		
+		_hidden_dims = [out_channels] + [32 * 2 ** x for x in range(h_size)]
+		_hidden_dims.reverse()
+
+		self.z_linear = nn.Linear(z_dim, 2048)
+
+		self.hidden_dims = _hidden_dims
+
+		self.z_dim = z_dim
+
 		modules = nn.ModuleList()
-		for i in range(len(_hidden_dims)-2):
+		modules.append(
+			nn.Sequential(
+						nn.ConvTranspose2d(
+							_hidden_dims[0], 
+							_hidden_dims[1], 
+							kernel_size=4, 
+							stride=1, 
+							padding=0,
+							# output_padding=1
+						),
+						nn.BatchNorm2d(_hidden_dims[1]),
+						nn.ReLU(),
+					)
+		)
+
+		for i in range(len(_hidden_dims) - 2):
+			if i == len(_hidden_dims) - 3 :
+				acc = nn.Tanh()
+			else:
+				acc = nn.Sequential(
+						nn.BatchNorm2d(_hidden_dims[i+2]),
+						nn.ReLU()
+				)
 			modules.append(
 				nn.Sequential(
 					nn.ConvTranspose2d(
-						_hidden_dims[i], 
 						_hidden_dims[i+1], 
-						kernel_size=3, 
+						_hidden_dims[i+2], 
+						kernel_size=4, 
 						stride=2, 
-						padding=1, 
-						output_padding=1
+						padding=1,
+						# output_padding=1
 					),
-					nn.BatchNorm2d(_hidden_dims[i+1]),
-					nn.ReLU()
+					acc
 				)
 			)
 
-		self.convTranspose = nn.Sequential(*modules)
+		self.conv = nn.Sequential(*modules)
 
-		self.final_layer = nn.Sequential(
-			nn.ConvTranspose2d(
-				_hidden_dims[-2], 
-				_hidden_dims[-2], 
-				kernel_size=3, 
-				stride=2, 
-				padding=1, 
-				output_padding=1
-			),
-			nn.BatchNorm2d(_hidden_dims[-2]),
-			nn.ReLU(),
-			nn.Conv2d(
-				_hidden_dims[-2],
-				_hidden_dims[-1],
-				kernel_size=3,
-				stride=2,
-				padding=1
-			),
-			nn.Tanh()
-		)
 
-		self.h_last = _hidden_dims[0] 
+
 
 	def forward(self, x):
-		# print(x.shape)
+		print(x.shape)
 		x = self.z_linear(x)
-		# print(x.shape)
-		x = x.view(-1, self.h_last, self.v, self.v)
-		# print(x.shape)
-		x = self.convTranspose(x)
-		# print(x.shape)
-		x = self.final_layer(x)
+		print(x.shape)
+		x = x.view(-1, 512, 2, 2)
+		print(x.shape)
+		x = self.conv(x)
+		print(x.shape)
+		# x = self.final_layer(x)
 		# print(x.shape)
 		return x
 
@@ -145,24 +149,9 @@ class VAE(nn.Module):
 
 	def loss(self, x, z, mu, log_var):
 		rec_loss = F.mse_loss(z, x)
-		# kl = (var + mu**2 - torch.log(var) - 1/2).sum()
-		# kl = -torch.sum(1 + torch.log(var) - mu.pow(2) - var)
-		# kl = -torch.sum(1 + torch.log(var.exp()) - mu.pow(2) - var.exp())
-		# kl_= -torch.sum(1 + torch.log(var.pow(2)) - mu.pow(2) - var.pow(2))
-
-		# kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1), dim = 0)
-
-		# kl = torch.mean(-0.5 * torch.sum(1 + torch.log(var.pow(2)) - mu ** 2 - var.pow(2), dim = 1), dim = 0)
-
 		# Modified version of 
 		# https://github.com/AntixK/PyTorch-VAE/blob/8700d245a9735640dda458db4cf40708caf2e77f/models/vanilla_vae.py#L8
 		kl = torch.mean(-0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(), dim = 1), dim = 0)
-		# print(var)
-		# print(log_var)
-		# print(mu)
-		# print(kl)
-		# print(rec_loss)
-		# print()
 
 		# biger const = more variation : 0.0025 good for cifar10 100 epochs
 		loss = rec_loss + kl * self.kl_factor
@@ -180,45 +169,43 @@ class VAE(nn.Module):
 
 		return z, loss, losses
 
-def vae(channels, z_dim=128, hidden_dims=[32, 64, 128, 256, 512], ratio=32, kl_factor=0.00025):
-	encoder = Encoder(channels, z_dim=z_dim, hidden_dims=hidden_dims, ratio=ratio)
-	hidden_dims.reverse()
-	decoder = Decoder(channels, z_dim=z_dim, hidden_dims=hidden_dims, ratio=ratio)
-	hidden_dims.reverse()
+def vae(channels, z_dim=128, ratio=32, kl_factor=0.00025):
+	encoder = Encoder(channels, z_dim=z_dim, ratio=ratio)
+	decoder = Decoder(channels, z_dim=z_dim, ratio=ratio)
 	return VAE(encoder, decoder, kl_factor=kl_factor)
 
 # GAN components
 class Generator(nn.Module):
 	"""Some Information about Generator"""
-	def __init__(self, z_dim, in_channels, hidden_dims=[512, 256, 128, 64, 32], ratio=32):
+	def __init__(self, z_dim, in_channels, ratio=32):
 		super(Generator, self).__init__()
 
-		h_size = len(hidden_dims) - int(math.log2(ratio)) + 1
-
-		_hidden_dims = hidden_dims + [in_channels]
+		h_size = int(math.log2(ratio)) - 2
+		
+		_hidden_dims = [in_channels] + [128 * 2 ** x for x in range(h_size)]
+		_hidden_dims.reverse()
 		self.hidden_dims = _hidden_dims
 
 		self.z_dim = z_dim
 
-		# self.initial_layer = 
 		modules = nn.ModuleList()
 		modules.append(
 			nn.Sequential(
 						nn.ConvTranspose2d(
 							z_dim, 
 							_hidden_dims[0], 
-							kernel_size=3, 
-							stride=2, 
-							padding=1,
-							output_padding=1
+							kernel_size=4, 
+							stride=1, 
+							padding=0,
+							# output_padding=1
 						),
 						nn.BatchNorm2d(_hidden_dims[0]),
-						nn.ReLU()
+						nn.ReLU(),
 					)
 		)
 
-		for i in range(len(_hidden_dims)-1):
-			if i == len(_hidden_dims) - 2 and abs(h_size) == 0:
+		for i in range(len(_hidden_dims) - 1):
+			if i == len(_hidden_dims) - 2 :
 				acc = nn.Tanh()
 			else:
 				acc = nn.Sequential(
@@ -230,46 +217,15 @@ class Generator(nn.Module):
 					nn.ConvTranspose2d(
 						_hidden_dims[i], 
 						_hidden_dims[i+1], 
-						kernel_size=3, 
+						kernel_size=4, 
 						stride=2, 
 						padding=1,
-						output_padding=1
+						# output_padding=1
 					),
 					acc
 				)
 			)
-			
-		for i in range(abs(h_size)):
-			if i == abs(h_size) -1 :
-				acc = nn.Tanh()
-			else:
-				acc = nn.Sequential(
-						nn.BatchNorm2d(_hidden_dims[-1]),
-						nn.ReLU()
-				)
-			modules.append(
-				nn.Sequential(
-					nn.Conv2d(
-						_hidden_dims[-1],
-						_hidden_dims[-1],
-						kernel_size=3,
-						stride=2,
-						padding=1
-					),
-					acc
-				) if h_size > 0 else
-				nn.Sequential(
-						nn.ConvTranspose2d(
-						_hidden_dims[-1],
-						_hidden_dims[-1],
-						kernel_size=3,
-						stride=2,
-						padding=1,
-						output_padding=1
-					),
-					acc
-				)
-			)
+
 		self.conv = nn.Sequential(*modules)
 
 	def forward(self, x):
@@ -283,60 +239,48 @@ class Generator(nn.Module):
 
 class Discriminator(nn.Module):
 	"""Some Information about Discriminator"""
-	def __init__(self, in_channels, hidden_dims=[32, 64, 128, 256, 512], is_critic=False, ratio=32):
+	def __init__(self, in_channels, is_critic=False, ratio=32):
 		super(Discriminator, self).__init__()
 
-		h_size = 2 ** ((int(math.log2(ratio)) - len(hidden_dims))*2) 
+		h_size =  int(math.log2(ratio)) - 2
 		
-		hidden_dims = [in_channels] + hidden_dims
+		_hidden_dims = [in_channels] + [64*2**x for x in range(h_size)]
+
 		modules = nn.ModuleList()
-		for i in range(len(hidden_dims)-2):
+		for i in range(len(_hidden_dims)-1):
 			modules.append(
 				nn.Sequential(
 					nn.Conv2d(
-						hidden_dims[i], 
-						hidden_dims[i+1], 
-						kernel_size=3, 
+						_hidden_dims[i], 
+						_hidden_dims[i+1], 
+						kernel_size=4, 
 						stride=2, 
-						padding=1
+						padding=1					
 					),
-					nn.BatchNorm2d(hidden_dims[i+1]),
-					nn.LeakyReLU(.2)
+					nn.BatchNorm2d(_hidden_dims[i+1]),
+					nn.LeakyReLU(.2) if i != len(_hidden_dims)-2 or not is_critic else nn.Sigmoid()
 				) if i != 0 else nn.Sequential(
 					nn.Conv2d(
-						hidden_dims[i], 
-						hidden_dims[i+1], 
-						kernel_size=3, 
+						_hidden_dims[i], 
+						_hidden_dims[i+1], 
+						kernel_size=4, 
 						stride=2, 
-						padding=1
+						padding=1					
 					),
 					nn.LeakyReLU(.2)
 				)
 			)
 
-		modules.append(
-			nn.Sequential(
-				nn.Conv2d(
-					hidden_dims[-2], 
-					hidden_dims[-1], 
-					kernel_size=3, 
-					stride=2, 
-					padding=1
-				),
-				nn.LeakyReLU(.2)
-			)
-		)
-
 		self.conv = nn.Sequential(*modules)
 		
 		if is_critic:
 			self.final_layer = nn.Sequential(
-				nn.Linear(hidden_dims[-1] * h_size, 1)
+				nn.Linear(_hidden_dims[-1] * 4 * 4, 1)
 			)		
 		else:
 			self.final_layer = nn.Sequential(
-				nn.Linear(hidden_dims[-1] * h_size, 1),
-				nn.Sigmoid()
+				nn.Linear(_hidden_dims[-1] * 4 * 4, 1),
+				# nn.Sigmoid()
 			)
 
 	def forward(self, x):
@@ -363,7 +307,7 @@ class GAN(nn.Module):
 				nn.init.normal_(m.weight.data, 0.0, 0.02)
 
 	def generator_loss(self, fake):
-		gen_loss = F.binary_cross_entropy_with_logits(fake, torch.ones_like(fake))
+		gen_loss = torch.mean( F.binary_cross_entropy_with_logits(fake, torch.ones_like(fake)))
 		return gen_loss
 
 	def discriminator_loss(self, disc_real, disc_fake):
@@ -389,12 +333,10 @@ class GAN(nn.Module):
 			noise = noise.to(device='cpu')
 		return fake, gen_loss, disc_loss
 
-def gan(z_dim=100, in_channels=3, hidden_dims=[32, 64, 128, 256, 512], ratio=32):
-	discriminator = Discriminator(in_channels, hidden_dims=hidden_dims, ratio=ratio)
-	hidden_dims.reverse()
-	generator = Generator(z_dim, in_channels, hidden_dims=hidden_dims, ratio=ratio)
+def gan(z_dim=100, in_channels=3, ratio=32):
+	discriminator = Discriminator(in_channels, ratio=ratio)
+	generator = Generator(z_dim, in_channels, ratio=ratio)
 	gan = GAN(generator, discriminator)
-	hidden_dims.reverse()
 	return gan
 
 class WGAN(nn.Module):
@@ -411,8 +353,8 @@ class WGAN(nn.Module):
 			if isinstance(m, (nn.ConvTranspose2d, nn.Conv2d, nn.BatchNorm2d)):
 				nn.init.normal_(m.weight.data, 0.0, 0.02)
 
-	def generator_loss(self, fake):
-		gen_loss = -torch.mean(fake)
+	def generator_loss(self, gen_img_critic):
+		gen_loss = -torch.mean(gen_img_critic)
 		return gen_loss
 
 	def critic_loss(self, critic_real, critic_fake):
@@ -420,7 +362,7 @@ class WGAN(nn.Module):
 		return critic_loss
 
 	def forward(self, x):
-		noise = torch.randn(x.shape[0], 100)
+		noise = torch.randn(x.shape[0], self.generator.z_dim)
 		if torch.cuda.is_available():
 			noise = noise.to(device=device)
 
@@ -437,12 +379,10 @@ class WGAN(nn.Module):
 		return fake, gen_loss, critic_loss
 
 
-def wgan(z_dim=100, in_channels=3, hidden_dims=[32, 64, 128, 256, 512], ratio=32):
-	critic = Discriminator(in_channels, hidden_dims=hidden_dims, is_critic=True, ratio=ratio)
-	hidden_dims.reverse()
-	generator = Generator(z_dim, in_channels, hidden_dims=hidden_dims, ratio=ratio)
+def wgan(z_dim=100, in_channels=3, ratio=32):
+	critic = Discriminator(in_channels, is_critic=True, ratio=ratio)
+	generator = Generator(z_dim, in_channels, ratio=ratio)
 	wgan = WGAN(generator, critic)
-	hidden_dims.reverse()
 	return wgan
 
 # Test
@@ -480,7 +420,29 @@ def gan_test():
 	print(g_loss, d_loss)
 	# print(var.shape)
 
+def wgan_test():
+	# x = torch.randn(3, 200)
+	x = torch.randn(64, 3, 32, 32).to('cuda:0')
+	z = torch.randn(64, 100).to('cuda:0')
+	# x = x.view(-1, 32*32)
+	generator = Generator(100, 3)
+	discriminator = Discriminator(3, is_critic=True)
+	gan = WGAN(generator, discriminator).to('cuda:0')
+	print(generator)
+	print(discriminator)
+	# print(gan)
+
+	z1 = generator(z)
+	x1 = discriminator(x)
+	f, g_loss, d_loss = gan(x)
+
+	print(x1.shape)
+	print(z1.shape)
+	print(f.shape)
+	print(g_loss, d_loss)
+	# print(var.shape)
+
 if __name__ == "__main__":
-	vae_test()
+	wgan_test()
 	print("End")
 

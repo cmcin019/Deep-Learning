@@ -18,7 +18,7 @@ def mnist(batch_size=64, ratio=32):
 		transform = transform,
 		download = True,
 	)
-	train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+	train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
 
 	# Load testing dataset
 	test_dataset = datasets.MNIST(
@@ -27,7 +27,7 @@ def mnist(batch_size=64, ratio=32):
 		transform = transform,
 		download = False,
 	)
-	test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+	test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
 
 	classes = [str(x) for x in range(10)]
 
@@ -49,7 +49,7 @@ def cifar10(batch_size=64, ratio=32):
 		transform = transform,
 		download = True,
 	)
-	train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+	train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 
 	# Load testing dataset
 	test_dataset = datasets.CIFAR10(
@@ -58,7 +58,7 @@ def cifar10(batch_size=64, ratio=32):
 		transform = transform,
 		download = False,
 	)
-	test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=True)
+	test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 
 	classes = ('plane', 'car', 'bird', 'cat',
 			'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
