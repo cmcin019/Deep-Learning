@@ -23,8 +23,9 @@ class Encoder(nn.Module):
 		super(Encoder, self).__init__()
 
 		h_size =  int(math.log2(ratio)) -1
-		
 		_hidden_dims = [in_channels] + [32*2**x for x in range(h_size)]
+		h_size = 2 ** ((int(math.log2(ratio)) - len(_hidden_dims[:-1]))*2)
+
 		self.hidden_dims = _hidden_dims
 		self.z_dim = z_dim
 
@@ -35,7 +36,7 @@ class Encoder(nn.Module):
 					nn.Conv2d(
 						_hidden_dims[i], 
 						_hidden_dims[i+1], 
-						kernel_size=4, 
+						kernel_size=3, 
 						stride=2, 
 						padding=1
 					),
@@ -44,7 +45,7 @@ class Encoder(nn.Module):
 				)
 			)
 		self.conv = nn.Sequential(*modules)
-		self.h_layer = nn.Linear(_hidden_dims[-1] *4, _hidden_dims[-1])
+		self.h_layer = nn.Linear(_hidden_dims[-1] * h_size, _hidden_dims[-1])
 
 		self.mu_layer = nn.Linear(_hidden_dims[-1], z_dim)
 		self.std_layer = nn.Linear(_hidden_dims[-1], z_dim)
@@ -73,64 +74,64 @@ class Decoder(nn.Module):
 		_hidden_dims = [out_channels] + [32 * 2 ** x for x in range(h_size)]
 		_hidden_dims.reverse()
 
-		self.z_linear = nn.Linear(z_dim, 2048)
+		self.z_linear = nn.Linear(z_dim, _hidden_dims[0] * 4 ** (1 + ((int(math.log2(ratio))) - len(_hidden_dims[:-1]))))
+		self.v = 2 * 2 ** ((int(math.log2(ratio))) - len(_hidden_dims[:-1]))
 
 		self.hidden_dims = _hidden_dims
 
 		self.z_dim = z_dim
 
 		modules = nn.ModuleList()
-		modules.append(
-			nn.Sequential(
-						nn.ConvTranspose2d(
-							_hidden_dims[0], 
-							_hidden_dims[1], 
-							kernel_size=4, 
-							stride=1, 
-							padding=0,
-							# output_padding=1
-						),
-						nn.BatchNorm2d(_hidden_dims[1]),
-						nn.ReLU(),
-					)
-		)
-
-		for i in range(len(_hidden_dims) - 2):
-			if i == len(_hidden_dims) - 3 :
-				acc = nn.Tanh()
-			else:
-				acc = nn.Sequential(
-						nn.BatchNorm2d(_hidden_dims[i+2]),
-						nn.ReLU()
-				)
+		for i in range(len(_hidden_dims)-2):
 			modules.append(
 				nn.Sequential(
 					nn.ConvTranspose2d(
+						_hidden_dims[i], 
 						_hidden_dims[i+1], 
-						_hidden_dims[i+2], 
-						kernel_size=4, 
+						kernel_size=3, 
 						stride=2, 
-						padding=1,
-						# output_padding=1
+						padding=1, 
+						output_padding=1
 					),
-					acc
+					nn.BatchNorm2d(_hidden_dims[i+1]),
+					nn.ReLU()
 				)
 			)
 
-		self.conv = nn.Sequential(*modules)
+		self.convTranspose = nn.Sequential(*modules)
 
+		self.final_layer = nn.Sequential(
+			nn.ConvTranspose2d(
+				_hidden_dims[-2], 
+				_hidden_dims[-2], 
+				kernel_size=3, 
+				stride=2, 
+				padding=1, 
+				output_padding=1
+			),
+			nn.BatchNorm2d(_hidden_dims[-2]),
+			nn.ReLU(),
+			nn.Conv2d(
+				_hidden_dims[-2],
+				_hidden_dims[-1],
+				kernel_size=3,
+				stride=2,
+				padding=1
+			),
+			nn.Tanh()
+		)
 
-
+		self.h_last = _hidden_dims[0] 
 
 	def forward(self, x):
-		print(x.shape)
+		# print(x.shape)
 		x = self.z_linear(x)
-		print(x.shape)
-		x = x.view(-1, 512, 2, 2)
-		print(x.shape)
-		x = self.conv(x)
-		print(x.shape)
-		# x = self.final_layer(x)
+		# print(x.shape)
+		x = x.view(-1, self.h_last, self.v, self.v)
+		# print(x.shape)
+		x = self.convTranspose(x)
+		# print(x.shape)
+		x = self.final_layer(x)
 		# print(x.shape)
 		return x
 
@@ -258,7 +259,7 @@ class Discriminator(nn.Module):
 						padding=1					
 					),
 					nn.BatchNorm2d(_hidden_dims[i+1]),
-					nn.LeakyReLU(.2) if i != len(_hidden_dims)-2 or not is_critic else nn.Sigmoid()
+					nn.LeakyReLU(.2) if i != len(_hidden_dims)-2 or is_critic else nn.Sigmoid()
 				) if i != 0 else nn.Sequential(
 					nn.Conv2d(
 						_hidden_dims[i], 
